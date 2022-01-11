@@ -13,8 +13,14 @@ COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 #then those that are relative to the following coupla of parameters:
 #regione: Sicilia
 #data:  1st October 2020 to 1st February 2021 
-df <- df_global[which(df_global$denominazione_regione == "Sicilia" & (df_global$data >= "2020-10-01T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
+df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & (df_global$data >= "2020-10-01T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
 #df_em <-df_global[which(df_global$denominazione_regione == "Emilia-Romagna" & (df_global$data >= "2021-10-01T10:00:00" & df_global$data <= "2022-01-01T10:00:00")), ]
+
+#######
+# clean dataset
+df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
+df <- df[ , -c(17:24)]
+
 
 ############################
 ### 1.Perform some explanatory analysis for your data, especially by use of graphical tools.
