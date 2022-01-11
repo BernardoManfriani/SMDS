@@ -16,8 +16,10 @@ COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & (df_global$data >= "2020-09-30T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
 #df_em <-df_global[which(df_global$denominazione_regione == "Emilia-Romagna" & (df_global$data >= "2021-10-01T10:00:00" & df_global$data <= "2022-01-01T10:00:00")), ]
 
-#######
+################
 # clean dataset 
+################
+
 # remove unuseful columns
 df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
 df <- df[ , -c(17:24)]
@@ -29,6 +31,17 @@ for(x in 2:nrow(df)) {
 
 # remove first row
 df <- df[-1,]
+
+#index reordering
+row.names(df) <- NULL       
+
+#add color
+df$color <-NA
+df$color[1:36]<-"bianco"
+df$color[c(37:59, 89:91, 101:108)]<-rep("arancione",34)
+df$color[c(60:84,99,100)]<-rep("giallo",27)
+df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",25)
+
 
 ############################
 ### 1.Perform some explanatory analysis for your data, especially by use of graphical tools.
