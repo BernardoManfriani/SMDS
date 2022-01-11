@@ -21,6 +21,11 @@ df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sici
 df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
 df <- df[ , -c(17:24)]
 
+#add color
+row.names(df) <- NULL       #index reordering
+df$color[c(37:59, 89:91, 101:108)]<-rep("arancione",34)
+df$color[c(60:84,99,100)]<-rep("giallo",27)
+df$color[c(85:88,92:95,97,98, 109:123)]<-rep("rosso",25)
 
 ############################
 ### 1.Perform some explanatory analysis for your data, especially by use of graphical tools.
