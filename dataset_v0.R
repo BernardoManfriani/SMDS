@@ -28,26 +28,29 @@ df <- df[ , -c(17:24)]
 for(x in 2:nrow(df)) {
   df$nuovi_tamponi[x] <- df$tamponi[x] - df$tamponi[x-1] 
 }
+for(x in 2:nrow(df)) {
+  df$nuovi_deceduti[x] <- df$deceduti[x] - df$deceduti[x-1]
+}
 
 # remove first row
 df <- df[-1,]
 
-#index reordering
+#index reordering and date format reordering
 row.names(df) <- NULL       
+df$data <- as.Date(df$data,  "%Y-%m-%d")
 
 #add color
 df$color <-NA
 df$color[1:36]<-"bianco"
 df$color[c(37:59, 89:91, 101:108)]<-rep("arancione",34)
 df$color[c(60:84,99,100)]<-rep("giallo",27)
-df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",25)
+df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",26)
 
 
 ############################
 ### 1.Perform some explanatory analysis for your data, especially by use of graphical tools.
 ############################
 
-df$data <- as.Date(df$data,  "%Y-%m-%d")
 # see how the number of positives changes over time
 ggplot() +
   geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
