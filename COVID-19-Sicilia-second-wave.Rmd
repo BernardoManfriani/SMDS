@@ -1,0 +1,77 @@
+---
+title: "COVID-19-Sicilia-second-wave"
+author: "Francesco Ortu"
+date: "1/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data analysis
+
+### Cleaning-import dataset
+
+```{r clean}
+df <- data.frame(read.csv("covid.sicilia.clean.csv"))
+```
+
+### First analysis
+
+```{r summary}
+summary(df)
+```
+
+```{r basic plot, echo=FALSE}
+library(ggplot2)
+df$data <- as.Date(df$data)
+ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# see how the number of swabs carried out changes over time
+ggplot() +
+  geom_line(data = df, aes(x = data, y = tamponi, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = tamponi, group = 1,   color=color)) +
+  labs(x = "Time", y = "Swabs") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_manual(values=c("orange","white","yellow", "red"))
+
+
+# show the total number of hospitalized 
+ggplot() +
+  geom_line(data = df, aes(x = data, y = totale_ospedalizzati, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = totale_ospedalizzati, group = 1,   color=color)) +
+  labs(x = "Time", y = "hospitalized") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_manual(values=c("orange","white","yellow", "red"))
+
+# show the total number of deaths 
+ggplot() +
+  geom_line(data = df, aes(x = data, y = deceduti, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = deceduti, group = 1,   color=color)) +
+  labs(x = "Time", y = "deaths") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_manual(values=c("orange","white","yellow", "red"))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
