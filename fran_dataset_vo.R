@@ -25,6 +25,10 @@ for(x in 2:nrow(df)) {
   df$nuovi_tamponi[x] <- df$tamponi[x] - df$tamponi[x-1] 
 }
 
+df$nuovi_deceduti <- NA
+for(x in 2:nrow(df)) {
+  df$nuovi_deceduti[x] <- df$deceduti[x] - df$deceduti[x-1] 
+}
 # remove first row
 df <- df[-1,]
 
@@ -36,7 +40,7 @@ df$color <-NA
 df$color[1:36]<-"bianco"
 df$color[c(37:59, 89:91, 101:108)]<-rep("arancione",34)
 df$color[c(60:84,99,100)]<-rep("giallo",27)
-df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",25)
+df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",26)
 
 
 ############################
@@ -74,3 +78,7 @@ na_count <- sapply(df, function(y) sum(length(which(is.na(y)))))
 na_count <- data.frame(na_count)
 na_count
 
+
+## analisi serie storiche
+nuovi_positivi_storiche <- df[,c(1,8)]
+positivi_storiche<-ts(nuovi_positivi_storiche$nuovi_positivi, start = 2020/10/01, frequency=5)

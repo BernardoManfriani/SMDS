@@ -1,5 +1,5 @@
 ---
-title: "COVID-19-Sicilia-second-wave"
+title: "COVID-19-sicilia-second-wave"
 author: "Francesco Ortu"
 date: "1/12/2022"
 output: html_document
@@ -11,22 +11,21 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Data analysis
 
-### Cleaning-import dataset
-
-```{r clean}
+```{r import data}
+setwd("/home/francesco/Repository/SMDS")
 df <- data.frame(read.csv("covid.sicilia.clean.csv"))
-```
+df <- df[,-c(1,2)]
 
-### First analysis
+```
 
 ```{r summary}
 summary(df)
 ```
 
-```{r basic plot, echo=FALSE}
+```{r plot, echo=FALSE}
 library(ggplot2)
 df$data <- as.Date(df$data)
-ggplot() +
+nuovi_positivi <- ggplot() +
   geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
   labs(x = "Time", y = "New positives") +
@@ -35,9 +34,9 @@ ggplot() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # see how the number of swabs carried out changes over time
-ggplot() +
-  geom_line(data = df, aes(x = data, y = tamponi, group = 1,  color=color)) +
-  geom_point(data = df, aes(x = data, y = tamponi, group = 1,   color=color)) +
+tamponi<-ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_tamponi, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = nuovi_tamponi, group = 1,   color=color)) +
   labs(x = "Time", y = "Swabs") +
   scale_x_date(date_breaks = '5 days',
                date_labels = '%Y-%m-%d') +
@@ -46,7 +45,7 @@ ggplot() +
 
 
 # show the total number of hospitalized 
-ggplot() +
+ospedalizzati<-ggplot() +
   geom_line(data = df, aes(x = data, y = totale_ospedalizzati, group = 1,  color=color)) +
   geom_point(data = df, aes(x = data, y = totale_ospedalizzati, group = 1,   color=color)) +
   labs(x = "Time", y = "hospitalized") +
@@ -56,22 +55,27 @@ ggplot() +
   scale_color_manual(values=c("orange","white","yellow", "red"))
 
 # show the total number of deaths 
-ggplot() +
-  geom_line(data = df, aes(x = data, y = deceduti, group = 1,  color=color)) +
-  geom_point(data = df, aes(x = data, y = deceduti, group = 1,   color=color)) +
+morti<-ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_deceduti, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = nuovi_deceduti, group = 1,   color=color)) +
   labs(x = "Time", y = "deaths") +
   scale_x_date(date_breaks = '5 days',
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   scale_color_manual(values=c("orange","white","yellow", "red"))
+nuovi_positivi
+tamponi
+ospedalizzati
+morti
 ```
 
-## Including Plots
+Correlation analysis:
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r correlation, echo =FALSE}
+library("ggcorrplot")
+corr <- cor_pmat(df[,2:15, 17])
+ggcorrplot(corr)
+nuovi_positivi_storiche <- df[,c(1,8)]
+positivi_storiche<-ts(nuovi_positivi_storiche$nuovi_positivi, start = 2020/10/01, frequency=1)
+acf(positivi_storiche)
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
