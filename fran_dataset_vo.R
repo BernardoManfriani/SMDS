@@ -3,8 +3,7 @@ library(ggplot2)
 
 
 #load data 
-df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
-COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 setwd("/home/francesco/Repository/SMDS")
 #read data we are interested in
 #then those that are relative to the following coupla of parameters:
