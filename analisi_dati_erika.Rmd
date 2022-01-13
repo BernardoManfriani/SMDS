@@ -1,0 +1,182 @@
+---
+title: "Covid-19 - SMSD"
+output:
+  html_document: default
+---
+
+#### Goal
+
+Build up a useful model in order to predict response variable Y starting from data provided.
+
+-   response variable: number of new positives
+-   data: Covid-19 spreading outbreak from the official website of Protezione Civile
+
+#### Dataset
+
+Load dataset.
+
+```{r dataset, echo=FALSE}
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
+COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+head(df_global)
+str(df_global)
+
+```
+
+#### Clean dataset
+
+Read data we are interested in, then those that are relative to the following couple of parameters:
+
+-   regione: Sicilia
+
+-   data: 1st October 2020 to 1st February 2021
+
+```{r df, echo=FALSE}
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
+COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+
+df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
+                                       (df_global$data >= "2020-09-30T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
+
+df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
+df <- df[ , -c(17:24)]
+
+df$data <- as.Date(df$data,  "%Y-%m-%d")
+
+
+# add columns accounting for:  
+
+for(x in 2:nrow(df)) {
+  df$nuovi_tamponi[x] <- df$tamponi[x] - df$tamponi[x-1] # the number of new swabs carried out
+  df$nuovi_decessi[x] <- df$deceduti[x] - df$deceduti[x-1] # daily deaths
+  df$nuovi_dimessi[x] <- df$dimessi_guariti[x] - df$dimessi_guariti[x-1] # variation in the number of people discharged from the hospital
+}
+
+#index reordering
+row.names(df) <- NULL 
+
+# remove first row
+df <- df[-1,]
+
+#add color
+df$color <-NA
+df$color[1:36]<- "bianco"
+df$color[c(37:59, 89:91, 101:108)]<- "arancione"
+df$color[c(60:84,99,100)]<- "giallo"
+df$color[c(85:88,92:95,96,97,98, 109:123)]<- "rosso"
+
+# add Rt value
+df$Rt <-NA
+# Report 24 | periodo di riferimento: 26/10/2020 al 1/11/2020
+df[which(df$data >= "2020-10-26" & df$data <= "2020-11-1"),]$Rt <- 1.28
+# Report 25 | periodo di riferimento: 26/10/2020 al 1/11/2020
+df[which(df$data >= "2020-10-26" & df$data <= "2020-11-1"),]$Rt <- 1.28
+# Report 26 | periodo di riferimento: 02/11/2020 al 8/11/2020
+df[which(df$data >= "2020-11-02" & df$data <= "2020-11-8"),]$Rt <- 1.13
+# Report 27 | periodo di riferimento: 09/11/2020 al 15/11/2020
+df[which(df$data >= "2020-11-09" & df$data <= "2020-11-15"),]$Rt <- 1.14
+# Report 28 | periodo di riferimento: 16/11/2020 al 22/11/2020
+df[which(df$data >= "2020-11-16" & df$data <= "2020-11-22"),]$Rt <- 1.04
+# Report 29 | periodo di riferimento: 23/11/2020 al 29/11/2020
+df[which(df$data >= "2020-11-23" & df$data <= "2020-11-29"),]$Rt <- 0.79
+# Report 30 | periodo di riferimento: 30/11/2020 al 06/12/2020
+df[which(df$data >= "2020-11-30" & df$data <= "2020-12-06"),]$Rt <- 0.68
+# Report 31 | periodo di riferimento: 07/12/2020 al 13/12/2020
+df[which(df$data >= "2020-12-07" & df$data <= "2020-12-13"),]$Rt <- 0.72
+# Report 32 | periodo di riferimento: 14/12/2020 al 20/12/2020
+df[which(df$data >= "2020-12-14" & df$data <= "2020-12-20"),]$Rt <- 0.74
+# Report 33 | periodo di riferimento: 21/12/2020 al 27/12/2020
+df[which(df$data >= "2020-12-21" & df$data <= "2020-12-27"),]$Rt <- 0.93
+# Report 34 | periodo di riferimento: 28/12/2020 al 03/01/2021
+df[which(df$data >= "2020-12-28" & df$data <= "2021-01-03"),]$Rt <- 1.04
+# Report 35 | periodo di riferimento: 04/01/2021 al 10/01/2021
+df[which(df$data >= "2021-01-04" & df$data <= "2021-01-10"),]$Rt <- 1.19
+# Report 36 | periodo di riferimento: 11/01/2021 al 17/01/2021
+df[which(df$data >= "2021-01-11" & df$data <= "2021-01-17"),]$Rt <- 1.27
+# Report 37 | periodo di riferimento: 18/01/2021 al 24/01/2021
+df[which(df$data >= "2021-01-18" & df$data <= "2021-01-24"),]$Rt <- 0.98
+# Report 38 | periodo di riferimento: 25/01/2021 al 31/01/2021
+df[which(df$data >= "2021-01-25" & df$data <= "2021-01-31"),]$Rt <- 0.73
+
+
+```
+
+#### Perform some explanatory analysis for your data.
+
+See how response variable changes over time:
+
+```{r y, echo=FALSE}
+library(ggplot2)
+
+positivi <- ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+positivi
+```
+
+See how response variable changes wrt explanatory variables provided
+
+```{r variables, echo=FALSE}
+par(mfrow=c(2,3))
+plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "Daily number of new positives")
+plot(nuovi_positivi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "Daily number of new positives") # ICU stands for the number of patients in intensive care
+plot(nuovi_positivi ~ isolamento_domiciliare, data = df, pch =16, xlab = "Home isolation", ylab = "Daily number of new positives") 
+
+plot(nuovi_positivi ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "Daily number of new positives")
+plot(nuovi_positivi ~ nuovi_dimessi, data = df, pch =16, xlab = "Daily number of discharged", ylab = "Daily number of new positives")
+plot(nuovi_positivi ~ tamponi, data = df, pch =16, xlab = "Number of swabs", ylab = "Daily number of new positives")
+
+```
+
+See how response variable changes wrt covariates considered
+
+```{r boxplot_scatterplot, echo =FALSE}
+library(ggplot2)
+ggplot(df,aes(x=factor(color),y=nuovi_positivi))+
+  geom_boxplot(outlier.color="black", fill=c("#fc6b03","white","#f2d729","#b3190b"))+
+  labs(x = " ", y = "Daily number of new positives")
+
+plot(df$data, df$nuovi_positivi,col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))], pch=16, xlab="Time", ylab="New positives")
+legend("topleft",legend=c( "Zona arancione","Zona bianca", "Zona gialla", "Zona rossa"),
+       col=c("#fc6b03","#cfcaca","#f2d729","#b3190b"),pch=16, bty="n",cex=0.8,pt.cex=1.2) 
+```
+
+```{r boxplot_rt_color, echo =FALSE}
+par(mfrow=c(1,2))
+boxplot(nuovi_positivi ~ Rt, data = df, xlab ="Fattore Rt", ylab="Nuovi positivi")
+boxplot(nuovi_positivi ~ color, data = df, xlab ="Colore regione", ylab="Nuovi positivi")
+```
+
+How swabs and new positives change over time:
+
+```{r swabs_positives, echo=FALSE}
+ggplot() +
+  geom_line(data = df, aes(x = data, y = log(nuovi_positivi), color="new positives", group = 1),) +
+  geom_point(data = df, aes(x = data, y = log(nuovi_positivi), group = 1),fill=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))],pch=21, size=2)+ 
+  geom_line(data = df, aes(x = data, y = log(nuovi_tamponi), color="swabs", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(nuovi_tamponi),color="swabs", group = 1)) +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_colour_manual(values = c("new positives" = "#6e0a0a", "swabs" ="#2f6d80")) +
+  geom_label(aes( x = as.Date("2021-01-15"), y = log(df$nuovi_tamponi[which(df$data=="2021-01-14")]), label = df$nuovi_tamponi[which(df$data=="2021-01-14")]), fill = "#478ca1")+
+  geom_label(aes( x = as.Date("2021-01-14"), y = log(df$nuovi_tamponi[which(df$data=="2021-01-15")]), label = df$nuovi_tamponi[which(df$data=="2021-01-15")]), fill = "#478ca1")+
+  geom_point(data = df, aes(x = as.Date("2021-01-14"), y = log(nuovi_tamponi[which(data=="2021-01-14")]), group = 1),fill="#2f6d80",pch=22, size=2) + 
+  geom_point(data = df, aes(x = as.Date("2021-01-15"), y = log(nuovi_tamponi[which(data=="2021-01-15")]), group = 1),fill="#2f6d80",pch=22, size=2) 
+```
+
+##### Describe the quality of the data and discuss whether and how a plausible statistical model could be posed.
+
+Check for missing values in the data frame
+
+```{r na, echo=FALSE}
+na_count <- sapply(df, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+na_count
+
+```
+
+
