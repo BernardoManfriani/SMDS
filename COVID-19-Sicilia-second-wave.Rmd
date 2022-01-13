@@ -75,7 +75,7 @@ Correlation analysis:
 library("ggcorrplot")
 library("corrplot")
 corr <- cor_pmat(df[, c(3,4,5,6)])
-M=cor(df[,2:8])
+M=cor(df[,2:6,8])
 corrplot(M, method="number")
 
 
