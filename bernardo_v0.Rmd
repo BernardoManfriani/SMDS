@@ -1,18 +1,7 @@
 ---
-title: "R Notebook"
+title: "Summarizing covid-19 situation from 1.10.20 to 31.01.21"
 output: html_notebook
 ---
-
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-
-
 
 ```{r}
 ##################
@@ -52,6 +41,16 @@ for(x in 2:nrow(df)){
  df$nuovi_deceduti[x] <- df$deceduti[x] - df$deceduti[x-1] 
 }
 
+for(x in 2:nrow(df)){
+ df$nuovi_ricoveri[x] <- df$ricoverati_con_sintomi[x] - df$ricoverati_con_sintomi[x-1] 
+}
+
+for(x in 2:nrow(df)){
+ df$nuove_intensive[x] <- df$terapia_intensiva[x] - df$terapia_intensiva[x-1] 
+}
+
+
+df$ricoverati_con_sintomi
 df$nuovi_deceduti
 # remove first row
 df <- df[-1,]
@@ -98,7 +97,6 @@ ggplot() +
 na_count <- sapply(df, function(y) sum(length(which(is.na(y)))))
 na_count <- data.frame(na_count)
 
-
 ```
 1) Some useful analysis, correlation and plots about covid data from 1/10/20 to 31/01/21 
 
@@ -144,11 +142,44 @@ na_count <- data.frame(na_count)
     #scale_y_continuous(limits = c(0,100))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
   plotIntensive
-  ```
+```
+
+
+```{r}
+plotSummary <- ggplot() +
+    geom_line(data = df, aes(x = data, y = nuovi_positivi, color="Positives", group = 1))+
+    geom_line(data = df, aes(x = data, y = nuovi_deceduti, color="Deaths", group = 1))+
+    geom_line(data = df, aes(x = data, y = nuove_intensive, color="Intensive care", group = 1))+
+    geom_line(data = df, aes(x = data, y = nuovi_ricoveri, color="Hospitalised with symptoms", group = 1)) +
+    labs(title = "Summary of covid situation between 1/10/20 and 31/02/21", x = "Time", y = "Cases") +
+    scale_x_date(date_breaks = '5 days',
+                 date_labels = '%Y-%m-%d') +
+    #scale_y_continuous(trans = "log10")+
+    #scale_y_continuous(limits = c(0,100))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
+
+plotSummary
+
+
+```
 
 
 
 
+```{r}
+plotOtherSummary <- ggplot() +
+    geom_line(data = df, aes(x = data, y = totale_positivi, color="Positives", group = 1))+
+    geom_line(data = df, aes(x = data, y = deceduti, color="Deaths", group = 1))+
+    geom_line(data = df, aes(x = data, y = terapia_intensiva, color="Intensive care", group = 1))+
+    geom_line(data = df, aes(x = data, y = ricoverati_con_sintomi, color="Hospitalised with symptoms", group = 1)) +
+    labs(title = "Summary of covid situation between 1/10/20 and 31/02/21", x = "Time", y = "Cases") +
+    scale_x_date(date_breaks = '5 days',
+                 date_labels = '%Y-%m-%d') +
+    scale_y_continuous(trans = "log10")+
+    #scale_y_continuous(limits = c(0,100))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
+plotOtherSummary
+```
 
 
 
