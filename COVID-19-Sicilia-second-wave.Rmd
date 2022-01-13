@@ -73,13 +73,13 @@ Correlation analysis:
 
 ```{r correlation, echo =FALSE}
 library("ggcorrplot")
-corr <- cor_pmat(df[,2:15, 17])
-ggcorrplot(corr)
+library("corrplot")
+corr <- cor_pmat(df[, c(3,4,5,6)])
+M=cor(df[,2:8])
+corrplot(M, method="number")
+
+
 nuovi_positivi_storiche <- df[,c(1,8)]
 positivi_storiche<-ts(nuovi_positivi_storiche$nuovi_positivi, start = 2020/10/01, frequency=1)
 acf(positivi_storiche)
 ```
-```{r}
-
-```
-
