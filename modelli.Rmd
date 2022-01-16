@@ -212,9 +212,6 @@ df %>%
   geom_smooth(se = FALSE, span = 0.20, col=3)
 
 ```
-```{r comparison}
-AIC(gmod1, gmod2, gmod3, gmod4)
-```
 
 ```{r glm nuovi tamponi, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -286,11 +283,11 @@ geom_line(data = df_extended, aes(x = data, y = predict(gmod6, newdata=df_extend
 
 ```
 
-```{r glm6, echo=FALSE, message=FALSE, warning=FALSE}
+```{r glm7, echo=FALSE, message=FALSE, warning=FALSE}
 
-gmod6 <- glm(nuovi_positivi ~ terapia_intensiva * color + data + terapia_intensiva_prev*color + nuovi_tamponi*color, data = df, family=poisson(link = "log"))
+gmod7 <- glm(nuovi_positivi ~ terapia_intensiva * color + data + terapia_intensiva_prev*color + nuovi_tamponi*color, data = df, family=poisson(link = "log"))
 
-summary(gmod6)
+summary(gmod7)
 
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
@@ -305,5 +302,5 @@ geom_line(data = df, aes(x = data, y = predict(gmod6,type="response"), color = "
 ```
 
 ```{r comparison}
-AIC(gmod1, gmod2, gmod3, gmod4, gmod5, gmod6)
+AIC(gmod1, gmod2, gmod3, gmod4, gmod5, gmod6, gmod7)
 ```
