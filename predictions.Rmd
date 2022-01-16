@@ -1,0 +1,53 @@
+```{r dataset, echo=FALSE, message=FALSE}
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
+COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
+COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+
+df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
+                                          (df_global$data >= "2020-09-24T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
+
+df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
+df <- df[ , -c(17:24)]
+
+df$data <- as.Date(df$data,  "%Y-%m-%d")
+
+
+# add columns accounting for:  
+
+df$nuovi_tamponi <-NA
+df$nuovi_decessi <-NA
+df$nuovi_dimessi <- NA
+df$terapia_intensiva_prev <- NA
+for(x in 8:nrow(df)) {
+  df$nuovi_tamponi[x] <- df$tamponi[x] - df$tamponi[x-1] # the number of new swabs carried out
+  df$nuovi_decessi[x] <- df$deceduti[x] - df$deceduti[x-1] # daily deaths
+  df$nuovi_dimessi[x] <- df$dimessi_guariti[x] - df$dimessi_guariti[x-1] # variation in the number of people discharged from the hospital
+  df$terapia_intensiva_prev[x] <- df_sicily_secondwave$terapia_intensiva[x-7]
+}
+
+#index reordering
+row.names(df) <- NULL 
+
+# remove first row
+df <- df[-c(1:7),]
+
+#add color
+df$color <-NA
+df$color[1:36]<- "bianco"
+df$color[c(37:59, 89:91, 101:108)]<- "arancione"
+df$color[c(60:84,99,100)]<- "giallo"
+df$color[c(85:88,92:95,96,97,98, 109:123)]<- "rosso"
+
+library(ggplot2)
+
+ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
