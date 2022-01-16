@@ -54,8 +54,8 @@ for(x in 2:nrow(df)){
 }
 
 
-df$ricoverati_con_sintomi
-df$nuovi_deceduti
+#df$ricoverati_con_sintomi
+#df$nuovi_deceduti
 # remove first row
 df <- df[-1,]
 
@@ -76,7 +76,7 @@ df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",25)
 
 df$data <- as.Date(df$data,  "%Y-%m-%d")
 # see how the number of positives changes over time
-ggplot() +
+plot1 <- ggplot() +
   geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
   labs(x = "Time", y = "New positives") +
@@ -85,7 +85,7 @@ ggplot() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # see how the number of swabs carried out changes over time
-ggplot() +
+plot2 <- ggplot() +
   geom_line(data = df, aes(x = data, y = tamponi, group = 1)) +
   geom_point(data = df, aes(x = data, y = tamponi, group = 1)) +
   labs(x = "Time", y = "Swabs") +
@@ -185,18 +185,20 @@ plotOtherSummary <- ggplot() +
 plotOtherSummary
 ```
 
+Here we're trying to predict nuovi_positivi with LOESS model. LOESS combines much of the simplicity of linear least squares regression with the flexibility of nonlinear regression.
+
 ```{r}
 
 model_0 <- lm(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri, data = df)
 
-plot(model_0)
+#(model_0)
 
 model_1 <- loess(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri + isolamento_domiciliare, data = df, span = 0.90)
 
 smoothed_1 <- predict(model_1)
 
-smoothed_1
-df$nuovi_positivi
+#smoothed_1
+#df$nuovi_positivi
 
 ggplot() + 
   geom_point(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
@@ -208,7 +210,7 @@ ggplot() +
                  date_labels = '%Y-%m-%d') +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
   
-plot(smoothed_1)
+#plot(smoothed_1)
 ```
 
 
