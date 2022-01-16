@@ -1,6 +1,10 @@
 ---
 title: "Summarizing covid-19 situation from 1.10.20 to 31.01.21"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
 ---
 
 ```{r}
@@ -124,7 +128,7 @@ na_count <- data.frame(na_count)
     labs(title = "Positivity rate", x = "Time", y = "% ratio of tested swabs to positives") +
     scale_x_date(date_breaks = '5 days',
                  date_labels = '%Y-%m-%d') +
-    #scale_y_continuous(limits = c(0,100))+
+    #scale_y_continuous(limits = c(0,100))+ 
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none", plot.title = element_text(hjust = 0.5))
   plotPositiveSwabs
 ```
@@ -181,6 +185,31 @@ plotOtherSummary <- ggplot() +
 plotOtherSummary
 ```
 
+```{r}
+
+model_0 <- lm(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri, data = df)
+
+plot(model_0)
+
+model_1 <- loess(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri + isolamento_domiciliare, data = df, span = 0.90)
+
+smoothed_1 <- predict(model_1)
+
+smoothed_1
+df$nuovi_positivi
+
+ggplot() + 
+  geom_point(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
+  geom_line(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1)) +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1)) +
+  labs(title = "Model_V1", x = "Time", y = "Cases") +
+    scale_x_date(date_breaks = '5 days',
+                 date_labels = '%Y-%m-%d') +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
+  
+plot(smoothed_1)
+```
 
 
 
