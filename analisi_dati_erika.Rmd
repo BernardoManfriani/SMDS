@@ -15,11 +15,10 @@ Build up a useful model in order to predict response variable Y starting from da
 
 Load dataset.
 
-```{r dataset, echo=FALSE}
+```{r dataset, echo=FALSE, message=FALSE}
 df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
 COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
-head(df_global)
-str(df_global)
+
 
 ```
 
@@ -31,7 +30,7 @@ Read data we are interested in, then those that are relative to the following co
 
 -   data: 1st October 2020 to 1st February 2021
 
-```{r df, echo=FALSE}
+```{r df, echo=FALSE, message=FALSE}
 df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
 COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 
@@ -65,47 +64,13 @@ df$color[c(37:59, 89:91, 101:108)]<- "arancione"
 df$color[c(60:84,99,100)]<- "giallo"
 df$color[c(85:88,92:95,96,97,98, 109:123)]<- "rosso"
 
-# add Rt value
-df$Rt <-NA
-# Report 24 | periodo di riferimento: 26/10/2020 al 1/11/2020
-df[which(df$data >= "2020-10-26" & df$data <= "2020-11-1"),]$Rt <- 1.28
-# Report 25 | periodo di riferimento: 26/10/2020 al 1/11/2020
-df[which(df$data >= "2020-10-26" & df$data <= "2020-11-1"),]$Rt <- 1.28
-# Report 26 | periodo di riferimento: 02/11/2020 al 8/11/2020
-df[which(df$data >= "2020-11-02" & df$data <= "2020-11-8"),]$Rt <- 1.13
-# Report 27 | periodo di riferimento: 09/11/2020 al 15/11/2020
-df[which(df$data >= "2020-11-09" & df$data <= "2020-11-15"),]$Rt <- 1.14
-# Report 28 | periodo di riferimento: 16/11/2020 al 22/11/2020
-df[which(df$data >= "2020-11-16" & df$data <= "2020-11-22"),]$Rt <- 1.04
-# Report 29 | periodo di riferimento: 23/11/2020 al 29/11/2020
-df[which(df$data >= "2020-11-23" & df$data <= "2020-11-29"),]$Rt <- 0.79
-# Report 30 | periodo di riferimento: 30/11/2020 al 06/12/2020
-df[which(df$data >= "2020-11-30" & df$data <= "2020-12-06"),]$Rt <- 0.68
-# Report 31 | periodo di riferimento: 07/12/2020 al 13/12/2020
-df[which(df$data >= "2020-12-07" & df$data <= "2020-12-13"),]$Rt <- 0.72
-# Report 32 | periodo di riferimento: 14/12/2020 al 20/12/2020
-df[which(df$data >= "2020-12-14" & df$data <= "2020-12-20"),]$Rt <- 0.74
-# Report 33 | periodo di riferimento: 21/12/2020 al 27/12/2020
-df[which(df$data >= "2020-12-21" & df$data <= "2020-12-27"),]$Rt <- 0.93
-# Report 34 | periodo di riferimento: 28/12/2020 al 03/01/2021
-df[which(df$data >= "2020-12-28" & df$data <= "2021-01-03"),]$Rt <- 1.04
-# Report 35 | periodo di riferimento: 04/01/2021 al 10/01/2021
-df[which(df$data >= "2021-01-04" & df$data <= "2021-01-10"),]$Rt <- 1.19
-# Report 36 | periodo di riferimento: 11/01/2021 al 17/01/2021
-df[which(df$data >= "2021-01-11" & df$data <= "2021-01-17"),]$Rt <- 1.27
-# Report 37 | periodo di riferimento: 18/01/2021 al 24/01/2021
-df[which(df$data >= "2021-01-18" & df$data <= "2021-01-24"),]$Rt <- 0.98
-# Report 38 | periodo di riferimento: 25/01/2021 al 31/01/2021
-df[which(df$data >= "2021-01-25" & df$data <= "2021-01-31"),]$Rt <- 0.73
-
-
 ```
 
 #### Perform some explanatory analysis for your data.
 
 See how response variable changes over time:
 
-```{r y, echo=FALSE}
+```{r y, echo=FALSE, message=FALSE, warning=FALSE}
 library(ggplot2)
 
 positivi <- ggplot() +
@@ -125,10 +90,9 @@ par(mfrow=c(2,3))
 plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "Daily number of new positives")
 plot(nuovi_positivi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "Daily number of new positives") # ICU stands for the number of patients in intensive care
 plot(nuovi_positivi ~ isolamento_domiciliare, data = df, pch =16, xlab = "Home isolation", ylab = "Daily number of new positives") 
-
 plot(nuovi_positivi ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "Daily number of new positives")
 plot(nuovi_positivi ~ nuovi_dimessi, data = df, pch =16, xlab = "Daily number of discharged", ylab = "Daily number of new positives")
-plot(nuovi_positivi ~ tamponi, data = df, pch =16, xlab = "Number of swabs", ylab = "Daily number of new positives")
+plot(nuovi_positivi ~ nuovi_tamponi, data = df, pch =16, xlab = "Number of swabs", ylab = "Daily number of new positives")
 
 ```
 
@@ -159,13 +123,21 @@ ggplot() +
   geom_point(data = df, aes(x = data, y = log(nuovi_positivi), group = 1),fill=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))],pch=21, size=2)+ 
   geom_line(data = df, aes(x = data, y = log(nuovi_tamponi), color="swabs", group = 1)) +
   geom_point(data = df, aes(x = data, y = log(nuovi_tamponi),color="swabs", group = 1)) +
+  geom_line(data = df, aes(x = data, y = log(nuovi_decessi), color="deaths", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(nuovi_decessi),color="deaths", group = 1)) +
+  geom_line(data = df, aes(x = data, y = log(terapia_intensiva), color="ICU", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(terapia_intensiva),color="ICU", group = 1)) +
+   geom_line(data = df, aes(x = data, y = log(isolamento_domiciliare), color="home isolation", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(isolamento_domiciliare),color="home isolation", group = 1)) +
   scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  scale_colour_manual(values = c("new positives" = "#6e0a0a", "swabs" ="#2f6d80")) +
+  scale_colour_manual(values = c("new positives" = "#6e0a0a", "swabs" ="#2f6d80", "deaths" = "#490e96", "ICU" = "#1a8f2f", "home isolation" = "#851128")) +
   geom_label(aes( x = as.Date("2021-01-15"), y = log(df$nuovi_tamponi[which(df$data=="2021-01-14")]), label = df$nuovi_tamponi[which(df$data=="2021-01-14")]), fill = "#478ca1")+
   geom_label(aes( x = as.Date("2021-01-14"), y = log(df$nuovi_tamponi[which(df$data=="2021-01-15")]), label = df$nuovi_tamponi[which(df$data=="2021-01-15")]), fill = "#478ca1")+
   geom_point(data = df, aes(x = as.Date("2021-01-14"), y = log(nuovi_tamponi[which(data=="2021-01-14")]), group = 1),fill="#2f6d80",pch=22, size=2) + 
   geom_point(data = df, aes(x = as.Date("2021-01-15"), y = log(nuovi_tamponi[which(data=="2021-01-15")]), group = 1),fill="#2f6d80",pch=22, size=2) 
+
+
 ```
 
 ##### Describe the quality of the data and discuss whether and how a plausible statistical model could be posed.
@@ -179,4 +151,260 @@ na_count
 
 ```
 
+Understand how each potential predictor relates to the outcome but also to every other predictor.
 
+We observe the following variables: - number of hospedalized with symptoms - number of ICU - number of deaths - number of swabs
+
+```{r ricoverati, echo=FALSE}
+par(mfrow=c(1,3))
+
+plot(ricoverati_con_sintomi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "Hospitalized with symptoms") # ICU stands for the number of patients in intensive care
+
+plot(ricoverati_con_sintomi ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "Hospitalized with symptoms")
+
+plot(ricoverati_con_sintomi ~ nuovi_tamponi, data = df, pch =16, xlab = "Number of swabs", ylab = "Hospitalized with symptoms")
+
+```
+
+```{r ICU, echo=FALSE}
+par(mfrow=c(1,3))
+plot(terapia_intensiva ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "ICU")
+
+plot(terapia_intensiva ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "ICU")
+
+plot(terapia_intensiva ~ nuovi_tamponi, data = df, pch =16, xlab = "Number of swabs", ylab = "ICU")
+
+```
+
+```{r deaths, echo=FALSE}
+par(mfrow=c(1,3))
+plot(nuovi_decessi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "Daily number of deaths")
+
+plot(nuovi_decessi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "Daily number of deaths")
+
+plot(nuovi_decessi ~ nuovi_tamponi, data = df, pch =16, xlab = "Number of swabs", ylab = "Daily number of deaths")
+
+```
+
+```{r swabs, echo=FALSE}
+par(mfrow=c(1,3))
+plot(nuovi_tamponi~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "Number of swabs")
+
+plot(nuovi_tamponi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "Number of swabs")
+
+plot(nuovi_tamponi ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "Number of swabs")
+
+
+```
+
+```{r correlation, echo=FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+M=cor(df[,c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi", "nuovi_positivi")])
+corrplot(M, method="number")
+
+```
+
+There are some values for the number of swabs carried out which seem to be not useful and misleading.
+By considering just the days in which the number of swabs was less than 20000, we are still managing the 86,17% of the data,
+but we can see how the correlation between the number of new positives and the number of swabs carried out completely changes.
+The following scatterplots show the correlation between the number of swabs and the other variables considered, while the one below show the correlation between the number of swabs and our response variable.
+```{r adjust_dataset, echo=FALSE, message=FALSE, warning=FALSE}
+library(dplyr) 
+
+n_20k <- nrow(df[which(df$nuovi_tamponi < 20000),]) # 106
+n_tot <- nrow(df)
+# by considering just the days in which the number of swabs was less than 20000
+# we are still managing the 86,17% of the data
+
+new_df <- df %>% 
+  filter(nuovi_tamponi <= 20000) #%>% 
+ # mutate(nuovi_tamponi = log2(nuovi_tamponi))
+
+par(mfrow=c(1,3))
+plot(nuovi_tamponi~ ricoverati_con_sintomi, data = new_df, pch =16, xlab = "Hospitalized with symptoms", ylab = "Number of swabs")
+
+plot(nuovi_tamponi ~ terapia_intensiva, data = new_df, pch =16, xlab = "ICU", ylab = "Number of swabs")
+
+plot(nuovi_tamponi ~ nuovi_decessi, data = new_df, pch =16, xlab = "Daily number of deaths", ylab = "Number of swabs")
+
+layout(1)
+plot(nuovi_positivi ~ nuovi_tamponi, data = new_df, pch =16, xlab = "Number of swabs", ylab = "Number of new positives")
+
+
+```
+
+Now the correlation between the number of swabs and the response variable seems to be completely different:
+
+
+```{r new correlation, echo =FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+M=cor(new_df[,c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi", "nuovi_positivi")])
+corrplot(M, method="number")
+```
+
+#### Building models
+
+Then we start exploring the previous correlation, since the number of swabs carried out is one of the main factor which determines the number of new positives. Indeed, the number of positives is strictly contained in the interval
+[0, n. of swabs].
+
+```{r mod1, echo =FALSE, message=FALSE, warning=FALSE}
+# first model
+mod1 <- lm(nuovi_positivi ~ nuovi_tamponi, data = new_df)
+summary(mod1)
+
+plot(nuovi_positivi ~ nuovi_tamponi, data = new_df, pch =16, xlab = "Number of swabs", ylab = "Number of new positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+abline(coef(mod1), col=3, lwd=2)
+```
+```{r mod1 errors, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+
+mu_hat <- coef(mod1)[1] + coef(mod1)[2]*(new_df$nuovi_tamponi) 
+y_res <- new_df$nuovi_positivi - mu_hat
+plot(mu_hat, y_res, pch=16, col=4)
+
+```
+We can observe that the residuals tend to grow for increasing values of our response variable.
+A second model which accounts for the presence or absence of restrictions:
+
+```{r mod2, echo =FALSE, message=FALSE, warning=FALSE}
+# second model
+restrictions <- rep("no",nrow(new_df))
+for (i in 1:nrow(new_df)){
+  if(new_df$color[i] == "arancione" || new_df$color[i] == "rosso")
+    restrictions[i] = "yes"
+}
+
+new_df$restr <- as.factor(restrictions)
+mod2 <- lm(nuovi_positivi ~ nuovi_tamponi + restr, data = new_df)
+summary(mod2)
+
+plot(nuovi_positivi ~ nuovi_tamponi, data = new_df, pch =16, xlab = "Number of swabs", ylab = "Number of new positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+curve(coef(mod2)[1] + coef(mod2)[2]*(x) + coef(mod2)[3], type='l', col=3, lwd=2, add=T)
+curve(coef(mod2)[1] + coef(mod2)[2]*(x) , type='l', col=3, lwd=2, add=T)
+```
+
+```{r mod2 errors, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+
+mu_hat <- coef(mod2)[1] + coef(mod2)[2]*(new_df$nuovi_tamponi) + coef(mod2)[3]*(as.numeric(new_df$restr)-1)
+y_res <- new_df$nuovi_positivi - mu_hat
+plot(mu_hat, y_res, pch=16, col=4)
+
+```
+Residuals seem to be slightly better. 
+Third model which considers interaction term
+
+```{r mod3, echo =FALSE, message=FALSE, warning=FALSE}
+mod3 <- lm(nuovi_positivi ~ nuovi_tamponi * restr, data = new_df)
+summary(mod3)
+
+plot(nuovi_positivi ~ nuovi_tamponi, data = new_df, pch =16, xlab = "Number of swabs", ylab = "Number of new positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+# equation for straight line y = beta_0 + beta_1*x + beta_2*z +beta_3*(x*d)
+curve(coef(mod3)[1] + coef(mod3)[3] + (coef(mod3)[2] + coef(mod3)[4])*x, type='l', col=3, lwd=2, add=T)
+curve(coef(mod3)[1] + coef(mod3)[2]*x , type='l', col=3, lwd=2, add=T)
+```
+```{r mod3 errors, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+
+mu_hat <- coef(mod3)[1] + coef(mod3)[3]*(as.numeric(new_df$restr)-1) + (coef(mod3)[2] + coef(mod3)[4]*(as.numeric(new_df$restr)-1))*(new_df$nuovi_tamponi)
+
+y_res <- new_df$nuovi_positivi - mu_hat
+
+plot(mu_hat, y_res, pch=16, col=4)
+
+```
+
+```{r mod4, echo =FALSE, message=FALSE, warning=FALSE}
+mod4 <- lm(nuovi_positivi ~ nuovi_tamponi + color, data = new_df)
+summary(mod4)
+
+plot(nuovi_positivi ~ nuovi_tamponi, data = new_df, pch =16, xlab = "Number of swabs", ylab = "Number of new positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+points(new_df$nuovi_tamponi, predict(mod4), data = new_df,pch=20, xlab = "Number of swabs", ylab = "Number of new positives")
+```
+
+```{r mod4 errors, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+mu_hat <- predict(mod4)
+y_res <- new_df$nuovi_positivi - mu_hat
+plot(mu_hat, y_res, pch=16, col=4)
+
+```
+Now we order and see how the residuals change wrt to time, or the date we are considering
+
+```{r mod4 errors 2, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+library(modelr)
+library(ggplot2)
+new_df <- new_df %>% 
+  add_residuals(mod4)
+
+new_df %>% 
+  ggplot(aes(data,resid)) + 
+  geom_point(aes(data, resid)) +
+  geom_ref_line(h = 0) + 
+  geom_line()
+
+ggplot(new_df, aes(data, resid, colour = color)) + 
+  geom_ref_line(h = 0) + 
+  geom_line()
+
+new_df %>% 
+  ggplot(aes(data, resid)) + 
+  geom_ref_line(h = 0) + 
+  geom_line(col=1) + 
+  geom_smooth(se = FALSE, span = 0.20, col=3)
+
+```
+
+
+It seems there is still a kind of pattern in the residuals, initially we underestimate the number of new positives, then in November the residuals increase and they remain positive until December.
+
+Now investigate the relationship with the highest correlated variable (which is given by people hospitalized with symptoms, maybe because the highest the number of people hospitalized, the higher the contagiousness and as a consequence the higher the number of new positives).
+
+```{r mod5, echo =FALSE, message=FALSE, warning=FALSE}
+mod5 <- lm(nuovi_positivi ~ ricoverati_con_sintomi, data = df)
+summary(mod5)
+
+plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospedalized with symptoms", ylab = "Number of new positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+points(df$ricoverati_con_sintomi, predict(mod5), data = df,pch=20, xlab = "Hospedalized with symptoms", ylab = "Number of new positives")
+```
+
+
+```{r mod6, echo =FALSE, message=FALSE, warning=FALSE}
+mod6 <- lm(nuovi_positivi ~ ricoverati_con_sintomi + color , data = df)
+summary(mod6)
+
+plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospedalized with symptoms", ylab = "Number of new positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+points(df$ricoverati_con_sintomi, predict(mod6), data = df,pch=20, xlab = "Hospedalized with symptoms", ylab = "Number of new positives")
+```
+```{r mod6 errors, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+library(modelr)
+library(ggplot2)
+df <- df %>% 
+  add_residuals(mod6)
+
+df %>% 
+  ggplot(aes(data,resid)) + 
+  geom_point(aes(data, resid)) +
+  geom_ref_line(h = 0) + 
+  geom_line()
+
+ggplot(df, aes(data, resid, colour = color)) + 
+  geom_ref_line(h = 0) + 
+  geom_line()
+
+df %>% 
+  ggplot(aes(data, resid)) + 
+  geom_ref_line(h = 0) + 
+  geom_line(col=1) + 
+  geom_smooth(se = FALSE, span = 0.20, col=3)
+
+```
