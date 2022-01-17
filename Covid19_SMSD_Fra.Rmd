@@ -16,9 +16,9 @@ Build up a useful model in order to predict response variable Y starting from da
 Load dataset.
 
 ```{r dataset, message=FALSE}
-df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
-
-
+df_extended <- data.frame(read.csv("sicily_secondwave_covid.csv"))
+n <- dim(df_extended)[1]
+df <- df_extended[-c((n-13):n),]
 ```
 
 #### Clean dataset
@@ -30,92 +30,21 @@ Read data we are interested in, then those that are relative to the following co
 -   data: 1st October 2020 to 1st February 2021
 
 ```{r df, echo=FALSE, message=FALSE, warning=FALSE}
-
-df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
-
-#select data about Sicily and the period to be considered
-df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
-                                          (df_global$data >= "2020-09-24T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
-
-# adjust number of swabs
-df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi_test_molecolare <- 
-  df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi
-
-
-
-
-# remove unused columns
-df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
-df_extended <- df_extended[ , -c(22:24)]
-df_extended <- df_extended[ , -c(16:20)]
-
-# put data in Date format
-df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
-
-
-# add columns accounting for the number of daily swabs, daily deaths,
-# people daily discharged from the hospital and the number of ICU of one week before 
-df_extended$nuovi_tamponi_pcr <-NA
-df_extended$nuovi_decessi <-NA
-df_extended$nuovi_dimessi <- NA
-df_extended$terapia_intensiva_prev <- NA
-df_extended$ricoverati_con_sintomi_prev <- NA
-
-
-for(x in 8:nrow(df_extended)) {
-  df_extended$nuovi_tamponi_pcr[x] <- df_extended$tamponi_test_molecolare[x] - df_extended$tamponi_test_molecolare[x-1] # the number of new swabs carried out
-  df_extended$nuovi_decessi[x] <- df_extended$deceduti[x] - df_extended$deceduti[x-1] # daily deaths
-  df_extended$nuovi_dimessi[x] <- df_extended$dimessi_guariti[x] - df_extended$dimessi_guariti[x-1] # variation in the number of people discharged from the hospital
-  df_extended$terapia_intensiva_prev[x] <- df_sicily_secondwave$terapia_intensiva[x-7]
-  df_extended$ricoverati_con_sintomi_prev[x] <- df_sicily_secondwave$ricoverati_con_sintomi[x-7]
-}
-
-# remove first rows 
-df_extended <- df_extended[-c(1:7),]
-
-# index reordering
-row.names(df_extended) <- NULL 
-
-# add color
-df_extended$color <-NA
-df_extended$color[1:36]<- "bianco"
-df_extended$color[c(37:59, 89:91, 101:108, 124:137)]<- "arancione"
-df_extended$color[c(60:84,99,100)]<- "giallo"
-df_extended$color[c(85:88,92:98, 109:123)]<- "rosso"
-
-df <- df_extended[1:123,]
-df$data <- as.Date(df$data,  "%Y-%m-%d")
-
-
 library(ggplot2)
 library(patchwork)
 
 
-newpos_col1 <- ggplot() +
+ggplot() +
           geom_line(data = df, aes(x = data, y = nuovi_positivi, group = 1)) +
-          geom_point(data = df, aes(x = data, y = nuovi_positivi, group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+          geom_point(data = df, aes(x = data, y = nuovi_positivi, group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))], size=2)+ 
           labs(x = "Time", y = "New positives") +
           scale_x_date(date_breaks = '5 days',
                        date_labels = '%Y-%m-%d') +
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-newpos_col1
 
-# adjust color
-df_extended$color[c(99,100)]<- "arancione"
-df_extended$color[c(89:91)]<- "rosso"
+ggsave(paste0( "images/response_variable.png"), width = 20, height = 8, dpi = 150)
 
-
-#df <- df_extended[1:123,]
-# newpos_col2 <- ggplot() +
-#           geom_line(data = df, aes(x = data, y = nuovi_positivi, group = 1)) +
-#           geom_point(data = df, aes(x = data, y = nuovi_positivi, group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
-#           labs(x = "Time", y = "New positives") +
-#           scale_x_date(date_breaks = '10 days',
-#                        date_labels = '%Y-%m-%d') +
-#           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-# 
-# newpos_col1 + newpos_col2
 
 ```
 
@@ -125,13 +54,26 @@ df_extended$color[c(89:91)]<- "rosso"
 - See how response variable changes wrt explanatory variables provided.
 
 ```{r variables, echo=FALSE}
+png("images/corr_scatterplot_response_variable.png", width=8.25,height=5.25,units="in",res=1200)
 par(mfrow=c(2,3))
-plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "Daily number of new positives")
-plot(nuovi_positivi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "Daily number of new positives") # ICU stands for the number of patients in intensive care
-plot(nuovi_positivi ~ isolamento_domiciliare, data = df, pch =16, xlab = "Home isolation", ylab = "Daily number of new positives") 
-plot(nuovi_positivi ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "Daily number of new positives")
-plot(nuovi_positivi ~ nuovi_dimessi, data = df, pch =16, xlab = "Daily number of discharged", ylab = "Daily number of new positives")
-plot(nuovi_positivi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "PCR test", ylab = "Daily number of new positives")
+plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Hospitalized with symptoms", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ terapia_intensiva, data = df, pch =16, xlab = "ICU", ylab = "New positives", col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) # ICU stands for the number of patients in intensive care
+plot(nuovi_positivi ~ isolamento_domiciliare, data = df, pch =16, xlab = "Home isolation", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ nuovi_decessi, data = df, pch =16, xlab = "Daily number of deaths", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ nuovi_dimessi, data = df, pch =16, xlab = "Daily number of discharged", ylab = "New positives", col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "PCR test", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+dev.off()
+
+png("images/corr_scatterplot_response_variable_lag.png", width=8.25,height=5.25,units="in",res=1200)
+par(mfrow=c(2,2))
+plot(nuovi_positivi ~ ricoverati_con_sintomi_prev, data = df, pch =16, xlab = "Hospitalized with symptoms (15d lag)", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ terapia_intensiva_prev, data = df, pch =16, xlab = "ICU (15d lag)", ylab = "New positives", col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) # ICU stands for the number of patients in intensive care
+
+plot(nuovi_positivi ~ nuovi_tamponi_pcr_prev, data = df, pch =16, xlab = "PCR test (15d lag)", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ nuovi_positivi_prev, data = df, pch =16, xlab = "New positives  (15d lag)", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+
+dev.off()
 
 ```
 
