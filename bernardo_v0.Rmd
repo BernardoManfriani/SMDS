@@ -7,7 +7,15 @@ output:
   pdf_document: default
 ---
 
-```{r}
+#### Clean dataset
+
+Read data we are interested in, then those that are relative to the following couple of parameters:
+
+-   regione: Sicilia
+
+-   data: 1st October 2020 to 1st February 2021
+
+```{r df, echo=FALSE, message=FALSE, warning=FALSE}
 ##################
 #### Project SMSD
 ##################
@@ -15,91 +23,78 @@ output:
 library(ggplot2)
 
 
-#load data 
 df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
 COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 
-#read data we are interested in
-#then those that are relative to the following coupla of parameters:
-#regione: Sicilia
-#data:  1st October 2020 to 1st February 2021 
-df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & (df_global$data >= "2020-09-30T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
-#df_em <-df_global[which(df_global$denominazione_regione == "Emilia-Romagna" & (df_global$data >= "2021-10-01T10:00:00" & df_global$data <= "2022-01-01T10:00:00")), ]
+#select data about Sicily and the period to be considered
+df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
+                                          (df_global$data >= "2020-09-24T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
 
-################
-# clean dataset 
-################
+# adjust number of swabs
+df_sicily_secondwave[which(df_sicily_secondwave$data >= "2021-01-15" & df_sicily_secondwave$data <= "2021-02-15"), ]$tamponi <- 
+          df_sicily_secondwave[which(df_sicily_secondwave$data >= "2021-01-15" & df_sicily_secondwave$data <= "2021-02-15"), ]$tamponi -
+          df_sicily_secondwave[which(df_sicily_secondwave$data >= "2021-01-15" & df_sicily_secondwave$data <= "2021-02-15"),]$tamponi_test_antigenico_rapido
 
-# remove unuseful columns
-df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
-df <- df[ , -c(17:24)]
+# remove unused columns
+df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
+df_extended <- df_extended[ , -c(17:24)]
+
+# put data in Date format
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 
-# add column accounting for the number of new swabs carried out
-for(x in 2:nrow(df)) {
-  df$nuovi_tamponi[x] <- df$tamponi[x] - df$tamponi[x-1] 
+# add columns accounting for the number of daily swabs, daily deaths,
+# people daily discharged from the hospital and the number of ICU of one week before 
+df_extended$nuovi_tamponi <-NA
+df_extended$nuovi_decessi <-NA
+df_extended$nuovi_dimessi <- NA
+df_extended$terapia_intensiva_prev <- NA
+df_extended$ricoverati_con_sintomi_prev <- NA
+
+
+for(x in 8:nrow(df_extended)) {
+  df_extended$nuovi_tamponi[x] <- df_extended$tamponi[x] - df_extended$tamponi[x-1] # the number of new swabs carried out
+  df_extended$nuovi_decessi[x] <- df_extended$deceduti[x] - df_extended$deceduti[x-1] # daily deaths
+  df_extended$nuovi_dimessi[x] <- df_extended$dimessi_guariti[x] - df_extended$dimessi_guariti[x-1] # variation in the number of people discharged from the hospital
+  df_extended$terapia_intensiva_prev[x] <- df_sicily_secondwave$terapia_intensiva[x-7]
+  df_extended$ricoverati_con_sintomi_prev[x] <- df_sicily_secondwave$ricoverati_con_sintomi[x-7]
 }
 
-# add column for new death per day
-for(x in 2:nrow(df)){
- df$nuovi_deceduti[x] <- df$deceduti[x] - df$deceduti[x-1] 
-}
+# remove first rows 
+df_extended <- df_extended[-c(1:7),]
 
-for(x in 2:nrow(df)){
- df$nuovi_ricoveri[x] <- df$ricoverati_con_sintomi[x] - df$ricoverati_con_sintomi[x-1] 
-}
+# index reordering
+row.names(df_extended) <- NULL 
 
-for(x in 2:nrow(df)){
- df$nuove_intensive[x] <- df$terapia_intensiva[x] - df$terapia_intensiva[x-1] 
-}
+# add color
+df_extended$color <-NA
+df_extended$color[1:36]<- "bianco"
+df_extended$color[c(37:59, 89:91, 101:108, 124:137)]<- "arancione"
+df_extended$color[c(60:84,99,100)]<- "giallo"
+df_extended$color[c(85:88,92:98, 109:123)]<- "rosso"
 
-
-#df$ricoverati_con_sintomi
-#df$nuovi_deceduti
-# remove first row
-df <- df[-1,]
-
-#index reordering
-row.names(df) <- NULL       
-
-#add color
-df$color <-NA
-df$color[1:36]<-"bianco"
-df$color[c(37:59, 89:91, 101:108)]<-rep("arancione",34)
-df$color[c(60:84,99,100)]<-rep("giallo",27)
-df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",25)
-
-
-############################
-### 1.Perform some explanatory analysis for your data, especially by use of graphical tools.
-############################
-
+df <- df_extended[1:123,]
 df$data <- as.Date(df$data,  "%Y-%m-%d")
-# see how the number of positives changes over time
-plot1 <- ggplot() +
-  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
-  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
-  labs(x = "Time", y = "New positives") +
-  scale_x_date(date_breaks = '5 days',
-               date_labels = '%Y-%m-%d') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-# see how the number of swabs carried out changes over time
-plot2 <- ggplot() +
-  geom_line(data = df, aes(x = data, y = tamponi, group = 1)) +
-  geom_point(data = df, aes(x = data, y = tamponi, group = 1)) +
-  labs(x = "Time", y = "Swabs") +
-  scale_x_date(date_breaks = '5 days',
-               date_labels = '%Y-%m-%d') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-#########################
-### 2.Describe the quality of the data and discuss whether and how a plausible statistical model could be posed.
-#########################
+library(ggplot2)
+library(patchwork)
 
-# check for missing values in the data frame
-na_count <- sapply(df, function(y) sum(length(which(is.na(y)))))
-na_count <- data.frame(na_count)
+
+newpos_col1 <- ggplot() +
+          geom_line(data = df, aes(x = data, y = nuovi_positivi, group = 1)) +
+          geom_point(data = df, aes(x = data, y = nuovi_positivi, group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+          labs(x = "Time", y = "New positives") +
+          scale_x_date(date_breaks = '5 days',
+                       date_labels = '%Y-%m-%d') +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+newpos_col1
+
+# adjust color
+df_extended$color[c(99,100)]<- "arancione"
+df_extended$color[c(89:91)]<- "rosso"
+
 
 ```
 1) Some useful analysis, correlation and plots about covid data from 1/10/20 to 31/01/21 
@@ -107,7 +102,7 @@ na_count <- data.frame(na_count)
 
 ```{r}
     plotPositiveDeath <- ggplot() +
-    geom_line(data = df, aes(x = data, y = (nuovi_deceduti/nuovi_positivi)*100, color="rapporto percentuale tra deceduti e positivi", group = 1)) +
+    geom_line(data = df, aes(x = data, y = (nuovi_decessi/nuovi_positivi)*100, color="rapporto percentuale tra deceduti e positivi", group = 1)) +
     labs(x = "Time", y = "% ratio of positive to deceased", title = "Fatality rate") +
     scale_x_date(date_breaks = '5 days',
                  date_labels = '%Y-%m-%d') +
@@ -152,9 +147,9 @@ na_count <- data.frame(na_count)
 ```{r}
 plotSummary <- ggplot() +
     geom_line(data = df, aes(x = data, y = nuovi_positivi, color="Positives", group = 1))+
-    geom_line(data = df, aes(x = data, y = nuovi_deceduti, color="Deaths", group = 1))+
-    geom_line(data = df, aes(x = data, y = nuove_intensive, color="Intensive care", group = 1))+
-    geom_line(data = df, aes(x = data, y = nuovi_ricoveri, color="Hospitalised with symptoms", group = 1)) +
+    geom_line(data = df, aes(x = data, y = nuovi_decessi, color="Deaths", group = 1))+
+    geom_line(data = df, aes(x = data, y = terapia_intensiva, color="Intensive care", group = 1))+
+    geom_line(data = df, aes(x = data, y = ricoverati_con_sintomi, color="Hospitalised with symptoms", group = 1)) +
     labs(title = "Summary of covid situation between 1/10/20 and 31/02/21", x = "Time", y = "Cases") +
     scale_x_date(date_breaks = '5 days',
                  date_labels = '%Y-%m-%d') +
@@ -163,6 +158,7 @@ plotSummary <- ggplot() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
 
 plotSummary
+
 
 
 ```
@@ -189,27 +185,31 @@ Here we're trying to predict nuovi_positivi with LOESS model. LOESS combines muc
 
 ```{r}
 
-model_0 <- lm(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri, data = df)
+model_0 <- lm(nuovi_positivi ~ nuovi_decessi + color, data = df)
 
 #(model_0)
 
-model_1 <- loess(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri + isolamento_domiciliare, data = df, span = 0.90)
+model_1 <- loess(nuovi_positivi ~ nuovi_decessi + isolamento_domiciliare + ricoverati_con_sintomi_prev, data = df,control = loess.control(surface = "direct"), span = 0.90)
 
 smoothed_1 <- predict(model_1)
+smoothed_2 <- predict(model_1, newdata = df_extended, type = "response")
 
-#smoothed_1
+smoothed_2
 #df$nuovi_positivi
 
 ggplot() + 
-  geom_point(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
-  geom_line(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
-  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1)) +
-  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1)) +
+  #geom_point(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
+  #geom_line(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) +
+  geom_line(data = df_extended, aes(x = data, y = nuovi_positivi, color="Real", group = 1)) +
+  #geom_point(data = df_extended, aes(x = data, y = smoothed_2, color="ModelPredicted", group = 1)) +
+  geom_line(data = df_extended, aes(x = data, y = smoothed_2, color="ModelPredicted", group = 1)) +
   labs(title = "Model_V1", x = "Time", y = "Cases") +
     scale_x_date(date_breaks = '5 days',
                  date_labels = '%Y-%m-%d') +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
-  
+
+
 #plot(smoothed_1)
 ```
 
@@ -221,7 +221,7 @@ library(forecast)
 library(HSAR)
 
 
-model_2 <- ts(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri + isolamento_domiciliare, data = df)
+#model_2 <- ts(nuovi_positivi ~ nuovi_decessi  + isolamento_domiciliare, data = df)
 
 
 model_ts <- ts(data = df$nuovi_positivi, start =  1, end = 123)
