@@ -214,4 +214,23 @@ ggplot() +
 ```
 
 
+Some model based on time series
+```{r}
+library(lubridate)
+library(forecast)
+library(HSAR)
+
+
+model_2 <- ts(nuovi_positivi ~ nuovi_deceduti + nuovi_ricoveri + isolamento_domiciliare, data = df)
+
+
+model_ts <- ts(data = df$nuovi_positivi, start =  1, end = 123)
+
+fit <- auto.arima(model_ts)
+plot(forecast(fit, 15))
+
+?plot()
+
+```
+
 
