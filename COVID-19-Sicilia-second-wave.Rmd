@@ -128,7 +128,7 @@ plot(model)
 ### GLM, gamma family
 
 ```{r glm gamma}
-model <- glm(df$nuovi_positivi ~ df$ricoverati_con_sintomi + df$terapia_intensiva , family = Gamma())
+model <- glm(df$nuovi_positivi ~ df$ricoverati_con_sintomi + df$terapia_intensiva* df$color , family = Gamma())
 summary(model)
 anova(model, test = "F")
 par(mfrow=c(2,2))
@@ -145,3 +145,36 @@ plot(model)
 -   Both the GLM/ANOVA output suggest that `ricoverati con sintomi` is more important and accurate than `terapia intensiva`.
 
 -   
+
+### GAM
+
+```{r gam}
+library(mgcv)
+gam1 <- gam(nuovi_positivi ~ terapia_intensiva + color + nuovi_tamponi, data = df, family="poisson")
+gam2 <- gam(nuovi_positivi ~ terapia_intensiva * color + nuovi_tamponi * color + , data = df, family="poisson")
+summary(gam1)
+summary(gam2)
+
+
+
+
+ p<- ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+geom_line(data = df, aes(x = data, y = predict(gam1,type="response"), color = "gam 1", group = 1)) +
+     labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ pp<- ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+geom_line(data = df, aes(x = data, y = predict(gam2,type="response"), color = "gam 2", group = 1)) +
+     labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+ p
+ pp
+```
