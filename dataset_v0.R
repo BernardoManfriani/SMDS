@@ -64,4 +64,4 @@ row.names(df_extended) <- NULL
 df <- df_extended[1:122,]
 df$data <- as.Date(df$data,  "%Y-%m-%d")
 
-fwrite(x=df, file="sicily_secondwave_covid.csv")
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
