@@ -5,7 +5,7 @@ df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVI
 
 #select data about Sicily and the period to be considered
 df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
-                                          (df_global$data >= "2020-09-17T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
+                                          (df_global$data >= "2020-09-16T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
 
 # adjust number of swabs
 df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi_test_molecolare <- 
@@ -17,13 +17,14 @@ df_extended <- df_extended[ , -c(22:24)]
 df_extended <- df_extended[ , -c(16:20)]
 
 
+
 # put data in Date format
 df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 # add color
 df_extended$color <-NA
 df_extended$color[1:50]<- "bianco"
-df_extended$color[c(51:74, 103:105, 115:122, 138:151)] <- "arancione"
+df_extended$color[c(51:74, 103:105, 115:122, 138:152)] <- "arancione"
 df_extended$color[c(74:98,113,114)]<- "giallo"
 df_extended$color[c(99:102,106:112, 123:137)]<- "rosso"
 
@@ -63,7 +64,7 @@ row.names(df_extended) <- NULL
 df <- df_extended[1:122,]
 df$data <- as.Date(df$data,  "%Y-%m-%d")
 
-fwrite(x=df, file="sicily_secondwave_covid.csv")
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
 
 ################################## Google data #######################################################
 #### Goolge data- Add data of google maps on the variation between the baseline
