@@ -63,11 +63,6 @@ row.names(df_extended) <- NULL
 df <- df_extended[1:122,]
 df$data <- as.Date(df$data,  "%Y-%m-%d")
 
-<<<<<<< HEAD
-fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
-=======
-fwrite(x=df, file="sicily_secondwave_covid.csv")
-
 ################################## Google data #######################################################
 #### Goolge data- Add data of google maps on the variation between the baseline
 set <- data.frame(read.csv("google_data_sicily.csv"))
@@ -114,4 +109,9 @@ ggplot(data = df_extended)+
   geom_point(aes(x=data,y=nuovi_positivi))+
   geom_line(aes(x=data, y=predict(mod, type="response")))
 
->>>>>>> 80d50318b3c5c3f48ff5f4eb6e94e1421cead7f2
+################
+##### Save data
+################
+
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
+
