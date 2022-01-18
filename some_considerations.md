@@ -24,3 +24,7 @@ Point 2:
       - smouth
     - gam 
     - regression tree
+    - Time series
+      - Moving average
+      - Exponential smoothing
+      - ARIMA
