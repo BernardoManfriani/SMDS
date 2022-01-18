@@ -1,12 +1,11 @@
 #### Load dataset 
 library(data.table)
 
-df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
-COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 
 #select data about Sicily and the period to be considered
 df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
-                                          (df_global$data >= "2020-09-17T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
+                                          (df_global$data >= "2020-09-16T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
 
 # adjust number of swabs
 df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi_test_molecolare <- 
@@ -18,13 +17,14 @@ df_extended <- df_extended[ , -c(22:24)]
 df_extended <- df_extended[ , -c(16:20)]
 
 
+
 # put data in Date format
 df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 # add color
 df_extended$color <-NA
 df_extended$color[1:50]<- "bianco"
-df_extended$color[c(51:74, 103:105, 115:122, 138:151)] <- "arancione"
+df_extended$color[c(51:74, 103:105, 115:122, 138:152)] <- "arancione"
 df_extended$color[c(74:98,113,114)]<- "giallo"
 df_extended$color[c(99:102,106:112, 123:137)]<- "rosso"
 
@@ -64,4 +64,51 @@ row.names(df_extended) <- NULL
 df <- df_extended[1:122,]
 df$data <- as.Date(df$data,  "%Y-%m-%d")
 
-fwrite(x=df, file="sicily_secondwave_covid.csv")
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
+
+################################## Google data #######################################################
+#### Goolge data- Add data of google maps on the variation between the baseline
+set <- data.frame(read.csv("google_data_sicily.csv"))
+row.names(set) <- NULL
+df_extended$variation_transit_station <- set$transit_stations_percent_change_from_baseline
+df_extended$variation_retail <- set$retail_and_recreation_percent_change_from_baseline
+df_extended$variation_workplace <- set$workplaces_percent_change_from_baseline
+
+# corr plot
+library("ggcorrplot")
+library("corrplot")
+cols <- c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi_pcr", "nuovi_positivi", "variation_transit_station", "variation_retail", "variation_workplace")
+M=cor(df_extended[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H")
+rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
+corrplot(M, method="number",tl.col="#a13c28", tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+par(mfrow=c(1,1))
+
+# Regression on google data
+
+par(mfrow = c(2,1))
+plot(nuovi_positivi ~ variation_transit_station, data = df_extended, pch =16, xlab = "variation train", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
+plot(nuovi_positivi ~ variation_retail, data = df_extended, pch =16, xlab = "variation retail", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
+plot(nuovi_positivi ~ variation_workplace, data = df_extended, pch =16, xlab = "variation workplace", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
+
+
+
+mod<-glm(nuovi_positivi ~ variation_workplace + variation_transit_station, data=df_extended, family=poisson)
+summary(mod)
+par(mfrow=c(2,2))
+plot(mod)
+library(ggplot2)
+ggplot(data = df_extended)+
+  geom_point(aes(x=data,y=nuovi_positivi))+
+  geom_line(aes(x=data, y=predict(mod, type="response")))
+
+## Regression with google data and other covariates
+mod<-glm(nuovi_positivi ~  variation_transit_station*(terapia_intensiva_prev + nuovi_tamponi_pcr_prev  + ricoverati_con_sintomi_prev) , data=df_extended, family=poisson)
+summary(mod)
+par(mfrow=c(2,2))
+plot(mod)
+library(ggplot2)
+ggplot(data = df_extended)+
+  geom_point(aes(x=data,y=nuovi_positivi))+
+  geom_line(aes(x=data, y=predict(mod, type="response")))
+

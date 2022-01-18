@@ -17,6 +17,7 @@ Load dataset.
 
 ```{r dataset, message=FALSE}
 df_extended <- data.frame(read.csv("sicily_secondwave_covid.csv"))
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 n <- dim(df_extended)[1]
 df <- df_extended[-c((n-13):n),]
 ```
@@ -422,7 +423,7 @@ Since the best glm model is the last one (from the AIC ), I will try to build a 
 library(mgcv)
 gam_mod1 <- gam(nuovi_positivi ~  (ricoverati_con_sintomi + terapia_intensiva + ricoverati_con_sintomi_prev + nuovi_tamponi_pcr) * color + data , data = df )
 gam_mod1_pred <- predict(gam_mod1, type="response", se.fit = TRUE)
-summary(glm_mod7)
+summary(gam_mod1)
 
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
