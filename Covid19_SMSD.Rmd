@@ -220,9 +220,10 @@ ggplot() +
 ```{r correlation, echo=FALSE, message=FALSE, warning=FALSE}
 library("ggcorrplot")
 library("corrplot")
-cols <- c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi", "nuovi_positivi")
+df$color2 <- as.numeric(as.factor(df$color))
+cols <- c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi", "nuovi_positivi", "color2")
 M=cor(df[,cols])
-colnames(M) <- c("A", "B", "C", "D", "E")
+colnames(M) <- c("A", "B", "C", "D", "E", "F")
 rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
 corrplot(M, method="number",tl.col="#a13c28", tl.srt = 360, tl.offset = 1, tl.cex=1.1)
 
