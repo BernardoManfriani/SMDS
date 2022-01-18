@@ -67,11 +67,43 @@ df$data <- as.Date(df$data,  "%Y-%m-%d")
 
 ################################## Google data #######################################################
 #### Goolge data- Add data of google maps on the variation between the baseline
-set <- data.frame(read.csv("google_data_sicily.csv"))
+set1 <-data.frame(read.csv("Global_Mobility_Report.csv"))
+set <- set1
+set$date <- as.Date(set$date, "%Y-%m-%d")
+set <- set[which(set$country_region_code == "IT"),]
+set <- set[which(set$sub_region_1 == "Sicily"),]
+set <-set[which(set$date >= "2020-09-16" ),]
+set <- set[which(set$date <= "2021-02-14"),]
+
+set <- set[c(1:152),]
 row.names(set) <- NULL
-df_extended$variation_transit_station <- set$transit_stations_percent_change_from_baseline
-df_extended$variation_retail <- set$retail_and_recreation_percent_change_from_baseline
-df_extended$variation_workplace <- set$workplaces_percent_change_from_baseline
+
+
+# index reordering
+ 
+
+set$var_station_prev <- NA
+set$var_workplace_prev <- NA
+set$var_retail_prev <- NA
+for(x in 16:nrow(set)) {
+  set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-14]
+  set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-14]
+  set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-14]
+}
+
+# remove first rows 
+set <- set[-c(1:15),]
+row.names(df_extended) <- NULL 
+
+
+df_extended$var_station <- set$transit_stations_percent_change_from_baseline
+df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
+df_extended$var_retail <- set$workplaces_percent_change_from_baseline
+df_extended$var_station_prev <- set$var_station_prev
+df_extended$var_workplace_prev <- set$var_workplace_prev
+df_extended$var_retail_prev <- set$var_retail_prev
+
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
 
 # corr plot
 library("ggcorrplot")
@@ -115,5 +147,5 @@ ggplot(data = df_extended)+
 ##### Save data
 ################
 
-fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
+
 
