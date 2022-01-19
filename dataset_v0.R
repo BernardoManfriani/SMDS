@@ -1,6 +1,7 @@
 #### Load dataset 
 library(data.table)
 
+################################## Dati covid protezione civile #######################################################
 df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 
 #select data about Sicily and the period to be considered
@@ -12,11 +13,10 @@ df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi_t
   df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi
 
 # remove unused columns
-df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
-df_extended <- df_extended[ , -c(22:24)]
-df_extended <- df_extended[ , -c(16:20)]
-
-
+df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", 
+                                                                                 "lat", "long", "note","tamponi_test_antigenico_rapido","codice_nuts_1","codice_nuts_2",
+                                                                                 "casi_da_sospetto_diagnostico", "casi_da_screening",
+                                                                                 "note_test",  "note_casi", "totale_positivi_test_molecolare", "totale_positivi_test_antigenico_rapido"))]
 
 # put data in Date format
 df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
@@ -67,10 +67,6 @@ df_extended <- df_extended[-c(1:15),]
 row.names(df_extended) <- NULL 
 
 
-df <- df_extended[1:122,]
-df$data <- as.Date(df$data,  "%Y-%m-%d")
-
-
 ################################## Google data #######################################################
 #### Goolge data- Add data of google maps on the variation between the baseline
 #set1 <-data.frame(read.csv("Global_Mobility_Report.csv"))
@@ -109,10 +105,8 @@ df_extended$var_station_prev <- set$var_station_prev
 df_extended$var_workplace_prev <- set$var_workplace_prev
 df_extended$var_retail_prev <- set$var_retail_prev
 
-################
-##### Save data
-################
-
+################ Save data ################
+### save the dataframe in a csv file
 fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
 
 

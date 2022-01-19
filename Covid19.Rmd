@@ -6,7 +6,7 @@ output:
   
 #### Goal
   
-  Build up a useful model in order to predict response variable Y starting from data provided.
+Build up a useful model in order to predict response variable Y starting from data provided.
 
 -   response variable: number of new positives
 -   data: Covid-19 spreading outbreak from the official website of Protezione Civile
@@ -18,13 +18,9 @@ Load dataset.
 ```{r dataset, message=FALSE, echo = FALSE}
 df_extended <- data.frame(read.csv("sicily_secondwave_covid.csv"))
 df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
-n <- dim(df_extended)[1]
 
-df <- df_extended
-df <- df[-c((n-13):n),]
-
+df <- df_extended[which(df_extended$data >= "2020-10-01" & df_extended$data <= "2021-01-31"),]
 df$data <- as.Date(df$data,  "%Y-%m-%d")
-df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 ```
 
@@ -32,14 +28,33 @@ df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 Read data we are interested in, then those that are relative to the following couple of parameters:
   
-  -   regione: Sicilia
+-   regione: Sicilia
 
 -   data: 1st October 2020 to 1st February 2021
 
-```{r df, echo=FALSE, message=FALSE, warning=FALSE}
+```{r prior analysis, echo=FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+cols <- c("ricoverati_con_sintomi","terapia_intensiva","totale_ospedalizzati", "isolamento_domiciliare", "totale_positivi", "dimessi_guariti", "deceduti", "tamponi","nuovi_positivi")
+M=cor(df_extended[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H", "I")
+rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+png("images/variables_corrplot.png", width=10,height=8,units="in",res=1200)
+corrplot(M,cl.lim=c(0,1),is.corr=FALSE, method="color",col=col(200), 
+     diag=FALSE, type="upper", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+dev.off()
+
+corrplot(M,cl.lim=c(0,1),is.corr=FALSE, method="color",col=col(200), 
+     diag=FALSE, type="upper", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+
+```
+
+```{r plot response var against time, echo=FALSE, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(patchwork)
-
 
 ggplot() +
   geom_line(data = df, aes(x = data, y = nuovi_positivi, group = 1)) +
@@ -57,6 +72,18 @@ ggsave(paste0( "images/response_variable.png"), width = 20, height = 8, dpi = 15
 
 #### Perform some explanatory analysis for your data.
 
+- Observe correlation plot between variables
+
+```{r corrplot, echo=FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+cols <- c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi_pcr", "nuovi_positivi")
+M=cor(df[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E")
+rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
+corrplot(M, method="number",tl.col="#a13c28", tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+
+```
 
 - See how response variable changes wrt explanatory variables provided.
 
@@ -134,7 +161,7 @@ dev.off()
 -   Understand how each potential predictor relates to the outcome but also to every other predictor.
 
 We observe the following variables: 
-  -   number of hospedalized with symptoms 
+-   number of hospedalized with symptoms 
 -   number of ICU 
 -   number of deaths 
 -   number of swabs
