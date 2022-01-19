@@ -23,10 +23,16 @@ df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 # add color
 df_extended$color <-NA
-df_extended$color[1:50]<- "bianco"
-df_extended$color[c(51:74, 103:105, 115:122, 138:152)] <- "arancione"
-df_extended$color[c(74:98,113,114)]<- "giallo"
-df_extended$color[c(99:102,106:112, 123:137)]<- "rosso"
+df_extended$color[which(df_extended$data >= "2020-09-16" & df_extended$data <= "2020-11-05")]<- "bianco"
+df_extended$color[which((df_extended$data >= "2020-11-06" & df_extended$data <= "2020-11-28") | 
+                          (df_extended$data >= "2020-12-28" & df_extended$data <= "2020-12-30") |
+                          (df_extended$data >= "2021-01-09" & df_extended$data <= "2021-01-16") |
+                          (df_extended$data >= "2021-02-01" & df_extended$data <= "2021-02-15"))] <- "arancione"
+df_extended$color[which((df_extended$data >= "2020-11-29" & df_extended$data <= "2020-12-23") |
+                          (df_extended$data >= "2021-01-07" & df_extended$data <= "2021-01-8"))] <- "giallo"
+df_extended$color[which((df_extended$data >= "2020-12-24" & df_extended$data <= "2020-12-27") |
+                          (df_extended$data >= "2020-12-31" & df_extended$data <= "2021-01-06") |
+                            (df_extended$data >= "2021-01-17" & df_extended$data <= "2021-01-31"))] <- "rosso"
 
 # add columns accounting for the number of daily swabs, daily deaths,
 # people daily discharged from the hospital and the number of ICU of one week before 
@@ -79,9 +85,6 @@ set <- set[c(1:152),]
 row.names(set) <- NULL
 
 
-# index reordering
- 
-
 set$var_station_prev <- NA
 set$var_workplace_prev <- NA
 set$var_retail_prev <- NA
@@ -103,7 +106,13 @@ df_extended$var_station_prev <- set$var_station_prev
 df_extended$var_workplace_prev <- set$var_workplace_prev
 df_extended$var_retail_prev <- set$var_retail_prev
 
+################
+##### Save data
+################
+
 fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
+
+
 
 # corr plot
 library("ggcorrplot")
@@ -121,7 +130,6 @@ par(mfrow = c(2,1))
 plot(nuovi_positivi ~ variation_transit_station, data = df_extended, pch =16, xlab = "variation train", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
 plot(nuovi_positivi ~ variation_retail, data = df_extended, pch =16, xlab = "variation retail", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
 plot(nuovi_positivi ~ variation_workplace, data = df_extended, pch =16, xlab = "variation workplace", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
-
 
 
 mod<-glm(nuovi_positivi ~ variation_workplace + variation_transit_station, data=df_extended, family=poisson)
@@ -143,9 +151,7 @@ ggplot(data = df_extended)+
   geom_point(aes(x=data,y=nuovi_positivi))+
   geom_line(aes(x=data, y=predict(mod, type="response")))
 
-################
-##### Save data
-################
+
 
 
 
