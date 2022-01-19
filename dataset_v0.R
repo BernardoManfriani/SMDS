@@ -73,17 +73,20 @@ df$data <- as.Date(df$data,  "%Y-%m-%d")
 
 ################################## Google data #######################################################
 #### Goolge data- Add data of google maps on the variation between the baseline
-set1 <-data.frame(read.csv("Global_Mobility_Report.csv"))
-set <- set1
-set$date <- as.Date(set$date, "%Y-%m-%d")
-set <- set[which(set$country_region_code == "IT"),]
-set <- set[which(set$sub_region_1 == "Sicily"),]
-set <-set[which(set$date >= "2020-09-16" ),]
-set <- set[which(set$date <= "2021-02-14"),]
+#set1 <-data.frame(read.csv("Global_Mobility_Report.csv"))
+#set <- set1
+#set$date <- as.Date(set$date, "%Y-%m-%d")
+#set <- set[which(set$country_region_code == "IT"),]
+#set <- set[which(set$sub_region_1 == "Sicily"),]
+#set <-set[which(set$date >= "2020-09-16" ),]
+#set <- set[which(set$date <= "2021-02-14"),]
 
-set <- set[c(1:152),]
-row.names(set) <- NULL
+#set <- set[c(1:152),]
+#row.names(set) <- NULL
 
+#fwrite(x=set,"google_data_sicily.csv")
+
+set <- data.frame(read.csv("google_data_sicily.csv"))
 
 set$var_station_prev <- NA
 set$var_workplace_prev <- NA
