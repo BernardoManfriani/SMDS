@@ -1,0 +1,551 @@
+---
+title: "Covid-19 - SMSD"
+output:
+  html_document: default
+---
+  
+#### Goal
+  
+Build up a useful model in order to predict response variable Y starting from data provided.
+
+-   response variable: number of new positives
+-   data: Covid-19 spreading outbreak from the official website of Protezione Civile
+
+#### Dataset
+
+Load dataset.
+
+Read data we are interested in, then those that are relative to the following couple of parameters:
+  
+-   regione: Sicilia
+
+-   data: 1st October 2020 to 1st February 2021
+
+```{r dataset, message=FALSE, echo = FALSE}
+df_extended <- data.frame(read.csv("sicily_secondwave_covid.csv"))
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
+
+df <- df_extended[which(df_extended$data >= "2020-10-01" & df_extended$data <= "2021-01-31"),]
+df$data <- as.Date(df$data,  "%Y-%m-%d")
+
+col_zone <- c("#fc6b03","#cfcaca","#f2d729","#b3190b")
+
+```
+
+#### Quality of the data
+
+Check for missing values in the data frame
+
+```{r na, echo=FALSE}
+ncols <- dim(df)[2]
+na_count <- sapply(df[,-c((ncols-15):ncols)], function(y) sum(length(which(is.na(y)))))
+
+na_count <- data.frame( gsub("_", " ", names(na_count)),na_count)
+colnames(na_count) <- c("variable", "missing values")
+
+library(gridExtra)
+library(grid)
+color_df <- data.frame(color = c("#bed0e8", "#809cc2"), stringsAsFactors = FALSE)
+my_table_theme <- ttheme_default(core=list(bg_params = list(fill = color_df$color[1:2], col=NA),padding=unit.c(unit(4, "mm"), unit(10, "mm"))), colhead =list(bg_params=list(fill ="#5680ba")))
+
+
+grid.newpage()
+grid.draw(tableGrob(na_count, rows=NULL))
+
+# png("images/missing_values_table.png", width=4.5,height=6.5,bg = "white",units="in",res=1200)
+# grid.table(na_count, rows=NULL)
+# dev.off()
+
+
+```
+
+Missing value are about the admission to the ICU and for this reason that value has been removed and it has been considered the number of ICU per day.
+
+#### Clean dataset
+
+Get rid of redundant and not useful variables, substitute or replace missing values and finally check for any kinf of relationship between variables.
+
+
+```{r prior analysis, echo=FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+
+cols <- c("ricoverati_con_sintomi","terapia_intensiva","totale_ospedalizzati", "isolamento_domiciliare", "totale_positivi", "dimessi_guariti", "deceduti", "tamponi","nuovi_positivi")
+M=cor(df_extended[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H", "I")
+rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+corrplot(M,col.lim=c(0,1),is.corr=FALSE, method="color", col=col(200), type="lower", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=0.7)
+
+# png("images/variables_corrplot.png", width=10,height=8,units="in",res=1500)
+# corrplot(M,col.lim=c(0,1),is.corr=FALSE, method="color",col=col(200),
+#      type="lower", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+# dev.off()
+
+```
+<br>
+
+We can see there are many variables which are highly related, though this relationship can be due to the fact that they are not independent. While for others variables we observe a poor correlation while we would have expected something different, for example for the number of swabs carried out.
+For this reason new variables were introduced for those values which account for the total amount of cases since the beginning of the pandemic.
+
+-   nuovi_tamponi: swabs carried out daily (tamponi current day - tamponi previous day) [by the 15/01 were counted also the antigenic tests]
+
+-   nuovi_decessi: daily deaths (deceduti current day - deceduti previous day)
+
+#### Perform some explanatory analysis of the data
+
+Then a new correlation plot is made to show which are the most highly correlated variables.
+
+```{r correlation on chosen covariates, echo=FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+cols <- c("ricoverati_con_sintomi", "isolamento_domiciliare","nuovi_decessi", "terapia_intensiva", "nuovi_tamponi_pcr", "nuovi_positivi")
+M=cor(df[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E", "F")
+rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+corrplot(M, method="color", col=col(200),  col.lim=c(0,1), is.corr=FALSE, type="lower", addCoef.col = "black", tl.col = "black", tl.srt = 360, tl.offset = 1, tl.cex=0.7)
+
+# png("images/variables_corrplot2.png", width=10,height=8,units="in",res=1500)
+# corrplot(M,col.lim=c(0,1),is.corr=FALSE, method="color",col=col(200),
+#      type="lower", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+# dev.off()
+
+```
+
+<br>
+Further investigate the correlations found between each pair of variables
+
+```{r scatterplot covariates, echo=FALSE}
+#png("images/scatterplot_covariates.png", width=13,height=6.5,bg = "white",units="in",res=1500)
+
+par(mfrow=c(2,5))
+plot(ricoverati_con_sintomi ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "ricoverati con sintomi")
+
+plot(ricoverati_con_sintomi ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "ricoverati con sintomi")
+
+plot(ricoverati_con_sintomi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "ricoverati con sintomi")
+
+
+plot(terapia_intensiva ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "terapia intensiva")
+
+plot(terapia_intensiva ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "terapia intensiva")
+
+plot(nuovi_decessi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "nuovi decessi")
+
+plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare")
+
+
+plot(isolamento_domiciliare ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "isolamento domiciliare")
+
+plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare")
+
+plot(isolamento_domiciliare ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "isolamento domiciliare")
+
+#dev.off()
+```
+
+The following plot shows the trends of previous variable through all the time period considered, it can be seen how it is almost the same for each of them, exept for the number of swabs.
+
+```{r most important variables trend, echo=FALSE, warning = FALSE}
+p1 <- ggplot() +
+  geom_line(data = df, aes(x = data, y = log(nuovi_positivi), color="nuovi positivi", group = 1),ylab="") +
+  geom_point(data = df, aes(x = data, y = log(nuovi_positivi), group = 1))+ 
+  geom_line(data = df, aes(x = data, y = log(nuovi_tamponi_pcr), color="nuovi tamponi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(nuovi_tamponi_pcr),color="nuovi tamponi", group = 1)) +
+  geom_line(data = df, aes(x = data, y = log(nuovi_decessi), color="nuovi decessi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(nuovi_decessi),color="nuovi decessi", group = 1)) +
+  geom_line(data = df, aes(x = data, y = log(terapia_intensiva), color="terapia intensiva", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(terapia_intensiva),color="terapia intensiva", group = 1)) +
+  geom_line(data = df, aes(x = data, y = log(isolamento_domiciliare), color="isolamento domiciliare", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(isolamento_domiciliare),color="isolamento domiciliare", group = 1)) +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  labs(y = "log") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_colour_manual(values = c("nuovi positivi" = "black", "nuovi tamponi" ="#2f6d80", "nuovi decessi" = "#490e96", "terapia intensiva" = "#1a8f2f", "isolamento domiciliare" = "#851128")) 
+
+p1
+#ggsave(paste0( "images/variables_trend.png"), plot=p1, height=6, width=8, units="in", dpi = 150)
+
+```
+
+
+```{r plot response var against time, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(patchwork)
+
+# ggplot() +
+#   geom_line(data = df, aes(x = data, y = nuovi_positivi, group = 1)) +
+#   geom_point(data = df, aes(x = data, y = nuovi_positivi, group = 1),col=col_zone[unclass(as.factor(df$color))], size=2)+ 
+#   labs(x = "Time", y = "New positives") +
+#   scale_x_date(date_breaks = '5 days',
+#                date_labels = '%Y-%m-%d') +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+#ggsave(paste0( "images/response_variable.png"), width = 20, height = 8, dpi = 150)
+
+
+```
+
+
+Previous chosen covariates were part of the given dataset, now we investigate possible relationships with information which is not part of our dataset.
+The first covariate which has been considered and added is related to the restrictions to which the region considered was subjected in the period considered. These restrictions are of 4 different levels, which are the 4 possible regional colors: white, yellow, orange, red.
+
+-   See how response variable changes wrt to region colors:
+
+```{r boxplot_scatterplot, echo =FALSE}
+library(ggplot2)
+ggplot(df,aes(x=factor(color),y=nuovi_positivi))+
+  geom_boxplot(outlier.color="black", fill=col_zone)+
+  labs(x = " ", y = "nuovi positivi")
+
+#ggsave(paste0("images/boxplot_color.png"), width = 8, height = 5, dpi = 200)
+
+
+p2 <- ggplot(df,aes(x=factor(color),y=nuovi_decessi))+
+  geom_boxplot(outlier.color="black", fill=col_zone)+
+  labs(x = " ", y = "nuovi decessi")
+
+p3 <- ggplot(df,aes(x=factor(color),y=nuovi_tamponi_pcr))+
+  geom_boxplot(outlier.color="black", fill=col_zone)+
+  labs(x = " ", y = "nuovi tamponi")
+
+#p2 +  plot_spacer() + p3 + plot_layout(widths = c(4, 0.5, 4))
+
+#ggsave(paste0("images/boxplot_color1.png"), width = 12, height = 5, dpi = 200)
+
+p4 <- ggplot(df,aes(x=factor(color),y=terapia_intensiva))+
+  geom_boxplot(outlier.color="black", fill=col_zone)+
+  labs(x = " ", y = "terapia intensiva")
+
+p5 <- ggplot(df,aes(x=factor(color),y=isolamento_domiciliare))+
+  geom_boxplot(outlier.color="black", fill=col_zone)+
+  labs(x = " ", y = "isolamento domiciliare")
+
+#p4 + plot_spacer() + p5 + plot_layout(widths = c(4, 0.5,4))
+
+#ggsave(paste0("images/boxplot_color2.png"), width = 12, height = 5, dpi = 200)
+
+```
+
+
+```{r variables, echo=FALSE, message=FALSE, warning = FALSE, comment = FALSE}
+#png("images/corr_scatterplot_response_variable.png", width=8.25,height=8.25,units="in",res=1200)
+par(mfrow=c(2,2))
+plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "ricoverati con sintomi", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "nuovi positivi", col=col_zone[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+
+#dev.off()
+
+# #png("images/corr_scatterplot_response_variable_lag.png", width=8.25,height=8.25,units="in",res=1200)
+# par(mfrow=c(2,2))
+# plot(nuovi_positivi ~ ricoverati_con_sintomi_prev, data = df, pch =16, xlab = "ricoverati con sintomi (15d lag)", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+# plot(nuovi_positivi ~ terapia_intensiva_prev, data = df, pch =16, xlab = "terapia intensiva (15d lag)", ylab = "nuovi positivi", col=col_zone[unclass(as.factor(df$color))]) # ICU stands for the number of patients in intensive care
+# 
+# plot(nuovi_positivi ~ nuovi_tamponi_pcr_prev, data = df, pch =16, xlab = "nuovi tamponi (15d lag)", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+# plot(nuovi_positivi ~ nuovi_positivi_prev, data = df, pch =16, xlab = "nuovi positivi (15d lag)", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+# 
+# #dev.off()
+
+```
+
+
+## Building models
+
+We start building our model looking at the relationship between our response variable and its highest correlated predictor (which is given by people hospitalized with symptoms, maybe because the highest the number of people hospitalized, the higher the contagiousness and as a consequence the higher the number of new positives).
+
+### Linear models
+
+```{r linear models, echo=FALSE, message=FALSE, warning=FALSE}
+# Try some linear models to see which are the variables which significantly explain the variability of y
+
+formula <- paste0("nuovi_positivi ~ ", c("ricoverati_con_sintomi", 
+             "ricoverati_con_sintomi + color", 
+             "ricoverati_con_sintomi * color", 
+             "ricoverati_con_sintomi + color + data", 
+             "ricoverati_con_sintomi * color + data"))
+
+lm_mod1 <- glm(eval(formula[1]), data = df, family="gaussian")
+lm_mod2 <- glm(eval(formula[2]), data = df, family="gaussian")
+lm_mod3 <- glm(eval(formula[3]), data = df, family="gaussian")
+lm_mod4 <- glm(eval(formula[4]), data = df, family="gaussian")
+lm_mod5 <- glm(eval(formula[5]), data = df, family="gaussian")
+
+# summary(lm_mod1)
+# summary(lm_mod2)
+# summary(lm_mod3)
+# summary(lm_mod4)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(lm_mod1), color = "model 1", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(lm_mod2), color = "model 2", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(lm_mod3), color = "model 3", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(lm_mod4), color = "model 4", group = 1)) +
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r lm table,  echo=FALSE, message=FALSE, warning=FALSE}
+lm_aic <- AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4, lm_mod5)
+
+lm_table <- data.frame(formula,lm_aic[2])
+colnames(lm_table) <- c("Model", "AIC")
+
+n<- dim(lm_table)[1]
+
+tt3 <- ttheme_minimal(
+  core=list(bg_params = list(fill = blues9[1:2], col=NA), padding=unit.c(unit(15, "mm"), unit(10, "mm")),fg_params=list(hjust=0, x=c(rep(0.02,n), rep(0.2,n)))),
+  colhead=list(bg_params=list(fill="#cee4f5"),fg_params=list(col="#0c1b4a",fontsize=14, fontface="bold",hjust=0, x=c(0.02,0.3)),padding=unit.c(unit(4, "mm"), unit(10, "mm"))),
+  rowhead=list(fg_params=list(col="orange", fontface=3L, hjust=0, x=0)))
+
+grid.newpage()
+grid.table(lm_table, rows = NULL, theme = tt3)
+
+```
+
+<br>
+
+### Generalized linear models
+
+```{r glm, echo=FALSE, message=FALSE, warning=FALSE}
+
+glm_mod1 <- glm(eval(formula[1]), data = df, family=poisson(link = "log"))
+glm_mod2 <- glm(eval(formula[2]), data = df, family=poisson(link = "log"))
+glm_mod3 <- glm(eval(formula[3]), data = df, family=poisson(link = "log"))
+glm_mod4 <- glm(eval(formula[4]), data = df, family=poisson(link = "log"))
+glm_mod5 <- glm(eval(formula[4]), data = df, family=poisson(link = "log"))
+
+# summary(glm_mod1)
+# summary(glm_mod2)
+# summary(glm_mod3)
+# summary(glm_mod4)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(glm_mod1,type="response"), color = "model 1", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(glm_mod2,type="response"), color = "model 2", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(glm_mod3,type="response"), color = "model 3", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(glm_mod4,type="response"), color = "model 4", group = 1)) +
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+AIC(glm_mod1, glm_mod2, glm_mod3, glm_mod4, glm_mod5)
+
+
+```
+
+```{r glm table,  echo=FALSE, message=FALSE, warning=FALSE}
+glm_aic <- AIC(glm_mod1,glm_mod2,glm_mod3,glm_mod4, glm_mod5)
+
+glm_table <- data.frame(formula,glm_aic[2])
+colnames(glm_table) <- c("Model", "AIC")
+
+library(gtable)
+
+grid.newpage()
+grid.table(glm_table, rows = NULL, theme = tt3)
+
+```
+
+```{r glm residuals, echo =FALSE, message=FALSE, warning=FALSE}
+## Model checking - Residual plots
+library(modelr)
+library(ggplot2)
+
+df$resid <- df$nuovi_positivi -  predict(glm_mod4,type="response")
+
+ggplot(df, aes(data, resid, colour = color)) + 
+  geom_ref_line(h = 0) + 
+  geom_line()
+
+df %>% 
+  ggplot(aes(data, resid)) + 
+  geom_ref_line(h = 0) + 
+  geom_line(col=1) + 
+  geom_smooth(se = FALSE, span = 0.20, col=3)
+
+```
+
+
+Now we add the another covariate which accounts for the number of ICU of one week before
+```{r glm prev ICU, echo=FALSE, message=FALSE, warning=FALSE}
+
+glm_mod6 <- glm(nuovi_positivi ~ ricoverati_con_sintomi * color + data + ricoverati_con_sintomi_prev + nuovi_tamponi_pcr, data = df, family=poisson(link = "log"))
+glm_mod5_pred <- predict(glm_mod5, newdata = df, type = "response", se.fit = TRUE)
+
+glm_mod6 <- glm(nuovi_positivi ~ (ricoverati_con_sintomi + terapia_intensiva) * color + data + ricoverati_con_sintomi_prev + nuovi_tamponi_pcr, data = df, family=poisson(link = "log"))
+glm_mod6_pred <- predict(glm_mod6, newdata = df, type = "response", se.fit = TRUE)
+
+summary(glm_mod5)
+summary(glm_mod6)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(glm_mod5,type="response"), color = "model 5", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(glm_mod6,type="response"), color = "model 6", group = 1)) +
+  geom_ribbon(data=df, aes(x=data, ymin=glm_mod6_pred$fit - glm_mod6_pred$se.fit, ymax=glm_mod6_pred$fit + glm_mod6_pred$se.fit),alpha=0.5)+
+  geom_ribbon(data=df, aes(x=data, ymin=glm_mod5_pred$fit - glm_mod5_pred$se.fit, ymax=glm_mod5_pred$fit + glm_mod5_pred$se.fit),alpha=0.5)+
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+AIC(glm_mod5, glm_mod6)
+
+
+library(modelr)
+
+df$resid <- df$nuovi_positivi - predict(glm_mod6,type="response")
+
+df %>% 
+  ggplot(aes(data, resid)) + 
+  geom_ref_line(h = 0) + 
+  geom_line(col=1) + 
+  geom_smooth(se = FALSE, span = 0.20, col=3)
+
+```
+
+```{r glm_mod6 predictions, echo=FALSE, message=FALSE, warning=FALSE}
+
+glm_mod6_pred <- predict(glm_mod6, newdata = df_extended, type = "response", se.fit = TRUE)
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(glm_mod6, newdata=df_extended, type="response"), color = "model 4", group = 1)) +  geom_ribbon(data=df_extended, aes(x=data, ymin=glm_mod6_pred$fit - glm_mod6_pred$se.fit, ymax=glm_mod6_pred$fit + glm_mod6_pred$se.fit),alpha=0.5)+
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+```{r glm_mod7, echo=FALSE, message=FALSE, warning=FALSE}
+
+glm_mod7 <- glm(nuovi_positivi ~  (ricoverati_con_sintomi + terapia_intensiva + ricoverati_con_sintomi_prev + nuovi_tamponi_pcr) * color + data , data = df, family=poisson(link = "log"))
+
+glm_mod7_pred <- predict(glm_mod7, newdata = df, type = "response", se.fit = TRUE)
+
+summary(glm_mod7)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(glm_mod7,type="response"), color = "model 4", group = 1)) +
+  geom_ribbon(data=df, aes(x=data, ymin=glm_mod7_pred$fit - glm_mod7_pred$se.fit, ymax=glm_mod7_pred$fit + glm_mod7_pred$se.fit),alpha=0.5)+
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+AIC(glm_mod7,glm_mod6,glm_mod5,glm_mod4,glm_mod3,glm_mod2,glm_mod1)
+```
+
+
+```{r glm_mod7 predictions, echo=FALSE, message=FALSE, warning=FALSE}
+
+glm_mod7_pred <- predict(glm_mod7, newdata = df_extended, type = "response", se.fit = TRUE)
+
+mean(glm_mod7_pred$se.fit[])/mean(df_extended$nuovi_positivi)
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(glm_mod7, newdata=df_extended, type="response"), color = "model 4", group = 1)) +
+  geom_ribbon(data=df_extended, aes(x=data, ymin=glm_mod7_pred$fit - glm_mod7_pred$se.fit, ymax=glm_mod7_pred$fit + glm_mod7_pred$se.fit),alpha=0.5)+
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+## GAM
+Since the best glm model is the last one (from the AIC ), I will try to build a GAM with same covariates.
+
+```{r gam_mod1, echo=FALSE}
+library(mgcv)
+gam_mod1 <- gam(nuovi_positivi ~  (ricoverati_con_sintomi + terapia_intensiva + ricoverati_con_sintomi_prev + nuovi_tamponi_pcr) * color + data , data = df )
+gam_mod1_pred <- predict(gam_mod1, type="response", se.fit = TRUE)
+summary(gam_mod1)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(gam_mod1,type="response"), color = "model 4", group = 1)) +
+  geom_ribbon(data=df, aes(x=data, ymin=gam_mod1_pred$fit - gam_mod1_pred$se.fit, ymax=gam_mod1_pred$fit + gam_mod1_pred$se.fit),alpha=0.2)+
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r gam predictions, echo=FALSE, message=FALSE, warning=FALSE}
+gam_mod_1_pred <- predict(gam_mod1, newdata=df_extended, type="response", se.fit = TRUE)
+mean(gam_mod_1_pred$se.fit)
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(gam_mod1, newdata=df_extended, type="response"), color = "model 4", group = 1)) +
+  geom_ribbon(data = df_extended, aes(x= data, ymin=-gam_mod_1_pred$se.fit + gam_mod_1_pred$fit, ymax=gam_mod_1_pred$se.fit + gam_mod_1_pred$fit), alpha=0.5)+
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+## LOESS
+```{r LOESS}
+library(mgcv)
+loess_mod1 <- loess(nuovi_positivi ~ terapia_intensiva + ricoverati_con_sintomi_prev + nuovi_tamponi_pcr  , data = df )
+loess_mod1_pred <- predict(loess_mod1, type="response", se.fit = TRUE)
+summary(loess_mod1)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(loess_mod1,type="response"), color = "model 4", group = 1)) +
+  
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r loess predictions, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(loess_mod1,  newdata=df_extended, type="response"), color = "model 4", group = 1)) +
+  
+  
+  
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
