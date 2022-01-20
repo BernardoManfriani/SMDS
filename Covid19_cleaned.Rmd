@@ -70,9 +70,12 @@ Get rid of redundant and not useful variables, substitute or replace missing val
 library("ggcorrplot")
 library("corrplot")
 
-cols <- c("ricoverati_con_sintomi","terapia_intensiva","totale_ospedalizzati", "isolamento_domiciliare", "totale_positivi", "dimessi_guariti", "deceduti", "tamponi","nuovi_positivi")
-M=cor(df_extended[,cols])
-colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H", "I")
+corr_df <- df
+corr_df$data <- as.numeric(corr_df$data)
+cols <- c("data", "ricoverati_con_sintomi","terapia_intensiva","totale_ospedalizzati", "isolamento_domiciliare", "totale_positivi", "dimessi_guariti", "deceduti", "tamponi","nuovi_positivi")
+
+M=cor(corr_df[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H", "I", "L")
 rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
 
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
@@ -103,7 +106,7 @@ library("ggcorrplot")
 library("corrplot")
 library("dvmisc")
 cols <- c("ricoverati_con_sintomi", "isolamento_domiciliare","nuovi_decessi", "terapia_intensiva", "nuovi_tamponi_pcr", "nuovi_positivi")
-M=cor(df[,cols])
+M=cor(corr_df[,cols])
 colnames(M) <- c("A", "B", "C", "D", "E", "F")
 rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
 
