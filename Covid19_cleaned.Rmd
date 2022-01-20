@@ -462,14 +462,15 @@ for(i in listlm){
 
 ```{r ngl table,  echo=FALSE, message=FALSE, warning=FALSE}
 ngl_aic <- AIC(nglmod1,nglmod2,nglmod3,nglmod4, nglmod5)
-ngl_mselm<-rbind(get_mse(nglmod1),get_mse(nglmod2),get_mse(nglmod3),get_mse(nglmod4),get_mse(nglmod5))
 
-ngl_table <- data.frame(formula,nglaic[2], ngl_mselm)
+ngl_mselm<-rbind(mean(resid(nglmod1)^2),mean(resid(nglmod2)^2),mean(resid(nglmod3)^2),mean(resid(nglmod4)^2),mean(resid(nglmod5)^2))
+
+ngl_table <- data.frame(formula,ngl_aic[2], ngl_mselm)
 colnames(ngl_table) <- c("Model", "AIC", "MSE")
 
 
 library(gtable)
-png("images/glm_table.png", width=10,height=8,units="in",res=1500)
+png("images/nglm_table.png", width=10,height=8,units="in",res=1500)
 grid.newpage()
 grid.table(ngl_table, rows = NULL, theme = tt3)
 dev.off()
@@ -569,7 +570,7 @@ ggplot() +
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-AIC(glm_mod7,glm_mod6,glm_mod5,glm_mod4,glm_mod3,glm_mod2,glm_mod1)
+AIC(glm_mod7,glm_mod6,glm_mod5,glm_mod4,glm_mod3,glm_mod2,glm_mod1)ll
 ```
 
 
