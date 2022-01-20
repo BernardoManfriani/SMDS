@@ -200,14 +200,17 @@ ordtmp<-z
 for (i in 1:N){
   z[i,]<-ordtmp[ord[i],]
 }
+shapiro.test(df$nuovi_positivi)
+#p-value<0.05 assunzione di normalità sbagliata!
+viff<-c(vif(lmod1),vif(lmod2),vif(lmod3))
 ```
 
 
 ```{r}
 nrw<-length(df[,1])
-listlm<-c("lmod1","lmod2","lmod3","lmod4")
-param<-c("ricoverati_con_sintomi","ricoverati_con_sintomi*color","(ricoverati_con_sintomi+terapia_intensiva)*color","(ricoverati_con_sintomi+terapia_intensiva+isolamento_domiciliare+nuovi_tamponi_pcr)*color")
-num_var<-4
+listlm<-c("lmod1","lmod2","lmod3")
+param<-c("ricoverati_con_sintomi +nuovi_tamponi_pcr","ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data","ricoverati_con_sintomi+(nuovi_tamponi_pcr*color) +data")
+num_var<-3
 l<-colnames(df)
 counter<-1
 str<-"nuovi_positivi"
@@ -246,21 +249,53 @@ y<-as.vector(y)
 x<-rep(df$data,num_var)
 dfn<-data.frame("x"=x,"y"=y,"model"=m)
 Gplot<-Gplot+geom_line( data=dfn,aes(x = x, y = y, color=model, group =model)) 
-AIC(lmod1,lmod2,lmod3,lmod4)
-Gplot  
+AIC <- rbind(extractAIC(lmod1)[2],extractAIC(lmod2)[2],
+             extractAIC(lmod3)[2])
+#BIC <- rbind(extractAIC(lm1, k=log(n))[2],extractAIC(lm2,k=log(n))[2],
+ #            extractAIC(lm3,k=log(n))[2],extractAIC(lm4,k=log(n))[2])
+Gplot 
+R_squared<-rbind(summary(lmod1)$adj.r.squared,summary(lmod2)$adj.r.squared,summary(lmod3)$adj.r.squared)
 ## Model checking - Residual plots
-pred <- predict(lmod4)
-y_res <- df$nuovi_positivi - pred
-plot(pred, y_res, pch=16, col=4, xlab ="predictions", ylab = "residuals")
+for(i in listlm){
+   tmp<-as.name(i)
+   pred <- predict(eval(tmp))
+   y_res <- df$nuovi_positivi - pred
+  plot(df$nuovi_positivi, y_res, xlab ="explanatory variable", ylab = "residuals",main=i)
+  plot(eval(tmp))
+}
+shapiro.test(df$nuovi_positivi)
+#p-value<0.05 assunzione di normalità sbagliata!
+viff<-c(vif(lmod1),vif(lmod2),vif(lmod3))
+AIC
+viff
+
+```
+```{r}
+
+pred <- predict(lmod3,type='response')
+se_link = predict(lmod3,   type = 'response', se.fit = TRUE)$se.fit
+ilink <- gaussian()$linkinv
+ndata <- data.frame(fit_resp  = ilink(pred),
+                right_upr = ilink(pred + ( 2.575829 * se_link)),
+                right_lwr = ilink(pred - ( 2.575829 * se_link)))
+
+ndata$data=df$data
+ggplot()+ geom_ribbon(data = ndata,
+                  aes(x= data,  ymin=right_lwr, ymax = right_upr),
+                  alpha = 0.1)
+
 
 ```
 ##Building GLM
 
 ```{r}
+library('readr')
+library('tibble')
+library('dplyr')
 nrw<-length(df[,1])
-listlm<-c("pglmod1","pglmod2","pglmod3","pglmod4")
-param<-c("ricoverati_con_sintomi","ricoverati_con_sintomi*color","(ricoverati_con_sintomi+terapia_intensiva)*color","(ricoverati_con_sintomi+terapia_intensiva+isolamento_domiciliare+nuovi_tamponi_pcr)*color")
-num_var<-4
+listlm<-c("pglmod1","pglmod2","pglmod3")
+param<-c("ricoverati_con_sintomi +nuovi_tamponi_pcr","ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data","(ricoverati_con_sintomi+nuovi_tamponi_pcr)*color +data")
+num_var<-3
 l<-colnames(df)
 counter<-1
 str<-"nuovi_positivi"
@@ -299,22 +334,40 @@ y<-as.vector(y)
 x<-rep(df$data,num_var)
 dfn<-data.frame("x"=x,"y"=y,"model"=m)
 Gplot<-Gplot+geom_line( data=dfn,aes(x = x, y = y, color=model, group =model)) 
-AIC(pglmod1,pglmod2,pglmod3,pglmod4)
+
 Gplot  
-
+AICp <- rbind(extractAIC(pglmod1)[2],extractAIC(pglmod2)[2],
+             extractAIC(pglmod3)[2])
+#BIC <- rbind(extractAIC(lm1, k=log(n))[2],extractAIC(lm2,k=log(n))[2],
+ #            extractAIC(lm3,k=log(n))[2],extractAIC(lm4,k=log(n))[2])
+Gplot 
+Devip<-rbind(summary(pglmod1)$deviance,summary(pglmod2)$deviance,summary(pglmod3)$deviance)
 ## Model checking - Residual plots
-pred <- predict(pglmod4,type="response")
-y_res <- df$nuovi_positivi - pred
-plot(pred, y_res, pch=16, col=4, xlab ="predictions", ylab = "residuals")
-
+for(i in listlm){
+   tmp<-as.name(i)
+   pred <- predict(eval(tmp))
+   y_res <- df$nuovi_positivi - pred
+  plot(df$nuovi_positivi, y_res, xlab ="explanatory variable", ylab = "residuals",main=i)
+  plot(eval(tmp))
+}
+       
 ```
+```{r}
+pred <- predict(pglmod3,type='response')
+se_link = predict(pglmod3,   type = 'response', se.fit = TRUE)$se.fit
+ilink <- poisson()$linkinv
+ndata <- data.frame(fit_resp  = ilink(pred),
+                right_upr = ilink(pred + ( 2.575829 * se_link)),
+                right_lwr = ilink(pred - ( 2.575829 * se_link)))
+```
+
 #GLM with negative
 ```{r}
 require("MASS")
 nrw<-length(df[,1])
-listlm<-c("nglmod1","nglmod2","nglmod3","nglmod4")
-param<-c("ricoverati_con_sintomi","ricoverati_con_sintomi*color","(ricoverati_con_sintomi+terapia_intensiva)*color","(ricoverati_con_sintomi+terapia_intensiva+isolamento_domiciliare+nuovi_tamponi_pcr)*color")
-num_var<-4
+listlm<-c("nglmod1","nglmod2","nglmod3")
+param<-c("ricoverati_con_sintomi +nuovi_tamponi_pcr","ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data","(ricoverati_con_sintomi+nuovi_tamponi_pcr)*color +data")
+num_var<-3
 l<-colnames(df)
 counter<-1
 str<-"nuovi_positivi"
@@ -355,16 +408,87 @@ dfn<-data.frame("x"=x,"y"=y,"model"=m)
 Gplot<-Gplot+geom_line( data=dfn,aes(x = x, y = y, color=model, group =model)) 
 AIC(nglmod1,nglmod2,nglmod3,nglmod4)
 Gplot  
+AICn <- rbind(extractAIC(nglmod1)[2],extractAIC(nglmod2)[2],
+             extractAIC(nglmod3)[2])
+#BIC <- rbind(extractAIC(lm1, k=log(n))[2],extractAIC(lm2,k=log(n))[2],
+ #            extractAIC(lm3,k=log(n))[2],extractAIC(lm4,k=log(n))[2])
+Gplot 
+Devi<-rbind(summary(nglmod1)$deviance,summary(nglmod2)$deviance,summary(nglmod3)$deviance)
 ## Model checking - Residual plots
-pred <- predict(nglmod4,type="response")
-y_res <- df$nuovi_positivi - pred
-plot(pred, y_res, pch=16, col=4, xlab ="predictions", ylab = "residuals")
-
-
+for(i in listlm){
+   tmp<-as.name(i)
+   pred <- predict(eval(tmp))
+   y_res <- df$nuovi_positivi - pred
+  plot(df$nuovi_positivi, y_res, xlab ="explanatory variable", ylab = "residuals",main=i)
+  plot(eval(tmp))
+}
 ```
 
+#GLM with quasipoisson
+```{r}
+nrw<-length(df[,1])
+listlm<-c("qnglmod1","qnglmod2","qnglmod3")
+param<-c("ricoverati_con_sintomi +nuovi_tamponi_pcr","ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data","(ricoverati_con_sintomi+nuovi_tamponi_pcr)*color +data")
+num_var<-3
+l<-colnames(df)
+counter<-1
+str<-"nuovi_positivi"
+for (i in 1:num_var){
+   if(counter>num_var) break
+  name<-paste("qnglmod",counter, sep="")
+  f<-as.formula(paste(str, param[counter] ,sep = " ~ "))
+  tmp<-glm(formula=f, data = df, family=quasipoisson)
+  assign(name,tmp) 
+  counter = counter +1
+}
+Gplot<-ggplot() +
+     geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(x = "Time", y = "New positives") 
+counter<-1
+tmpdf<-NULL
+boh<-rep(0,nrw)
+y<-matrix(nrow=nrw, ncol=num_var)
+tmp<-nrw*num_var
+m<-rep(0,tmp)
+for(i in listlm){
+  name<-paste("model",counter,sep="")
+  tmp1<-paste("tmpdf",counter,sep="")
+    tmp<-as.name(i)
+  y[,counter]<-predict(eval(tmp),type="response")
 
+l<-(nrw*(counter-1))
+if(counter==1) l=1
+r<-(nrw*counter)
+m[l:r]<-name
+counter<-counter+1
+}
+y<-as.vector(y)
+x<-rep(df$data,num_var)
+dfn<-data.frame("x"=x,"y"=y,"model"=m)
+Gplot<-Gplot+geom_line( data=dfn,aes(x = x, y = y, color=model, group =model)) 
 
+Gplot  
+AICqp <- rbind(extractAIC(qnglmod1)[2],extractAIC(qnglmod2)[2],
+             extractAIC(qnglmod3)[2])
+#BIC <- rbind(extractAIC(lm1, k=log(n))[2],extractAIC(lm2,k=log(n))[2],
+ #            extractAIC(lm3,k=log(n))[2],extractAIC(lm4,k=log(n))[2])
+Gplot 
+Deviqp<-rbind(summary(pglmod1)$deviance,summary(pglmod2)$deviance,summary(pglmod3)$deviance)
+## Model checking - Residual plots
+for(i in listlm){
+   tmp<-as.name(i)
+   pred <- predict(eval(tmp))
+   y_res <- df$nuovi_positivi - pred
+  plot(df$nuovi_positivi, y_res, xlab ="explanatory variable", ylab = "residuals",main=i)
+  plot(eval(tmp))
+}
+
+```
+#
+controllare vif
+meglio non negative binomial perchè cade restrizione su media=varianza
 ## Building models
 
 Then we start exploring the previous correlation, since the number of swabs carried out is one of the main factor which determines the number of new positives. Indeed, the number of positives is strictly contained in the interval
@@ -463,23 +587,35 @@ AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4)
 ### Generalized linear models
 
 ```{r glm, echo=FALSE, message=FALSE, warning=FALSE}
-
-glm_mod1 <- glm(nuovi_positivi ~ ricoverati_con_sintomi + color, data = df, family=poisson(link = "log"))
-glm_mod2 <- glm(nuovi_positivi ~ ricoverati_con_sintomi + color + data, data = df, family=poisson(link = "log"))
-glm_mod3 <- glm(nuovi_positivi ~ ricoverati_con_sintomi * color + data, data = df, family=poisson(link = "log"))
+glm_mod1 <- glm(nuovi_positivi ~ ricoverati_con_sintomi +nuovi_tamponi_pcr, data = df, family=poisson(link = "log"))
+glm_mod2 <- glm(nuovi_positivi ~ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data, data = df, family=poisson(link = "log"))
+glm_mod3 <- glm(nuovi_positivi ~ ricoverati_con_sintomi+(nuovi_tamponi_pcr*color) +data, data = df, family=poisson(link = "log"))
 glm_mod4 <- glm(nuovi_positivi ~ (ricoverati_con_sintomi + terapia_intensiva) * color + data, data = df, family=poisson(link = "log"))
 
 summary(glm_mod1)
 summary(glm_mod2)
 summary(glm_mod3)
 summary(glm_mod4)
-
+c1<-confint(glm_mod1,level=0.99999)
+c2<-confint(glm_mod2)
+c3<-confint(glm_mod3)
+c4<-confint(glm_mod4)
+ilink <- gaussian()$linkinv
+y_lower<-exp(c1[1,1]+c1[2,1]*df$ricoverati_con_sintomi +c1[3,1]*df$nuovi_tamponi_pcr)
+y_higher<-exp(c1[1,2]+c1[2,2]*df$ricoverati_con_sintomi +c1[3,2]*df$nuovi_tamponi_pcr)
+coef<-glm_mod1$coefficients
+y_pred<-exp(coef[1]+coef[2]*df$ricoverati_con_sintomi+coef[3]*df$nuovi_tamponi_pcr)
+mydata=cbind(df$ricoverati_con_sintomi,df$nuovi_tamponi_pcr)
+mydata=as.data.frame(mydata)
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
-geom_line(data = df, aes(x = data, y = predict(glm_mod1,type="response"), color = "model 1", group = 1)) +
-geom_line(data = df, aes(x = data, y = predict(glm_mod2,type="response"), color = "model 2", group = 1)) +
-geom_line(data = df, aes(x = data, y = predict(glm_mod3,type="response"), color = "model 3", group = 1)) +
-geom_line(data = df, aes(x = data, y = predict(glm_mod4,type="response"), color = "model 4", group = 1)) +
+geom_line(data = df, aes(x = data, y = y_pred, color = "model 1", group = 1))+
+  geom_ribbon(data = df,aes(x=data,ymin=y_lower,ymax= y_higher,color="interval"),alpha=0.5)
+#  geom_line(data = df, aes(x = data, y = y_lower, color = "model lower 1", group = 1))+
+# geom_line(data = df, aes(x = data, y = y_higher, color = "model higher 1", group = 1))
+#geom_line(data = df, aes(x = data, y = predict(glm_mod2,type="response"), color = "model 2", group = 1)) +
+#geom_line(data = df, aes(x = data, y = predict(glm_mod3,type="response"), color = "model 3", group = 1)) +
+#geom_line(data = df, aes(x = data, y = predict(glm_mod4,type="response"), color = "model 4", group = 1)) +
 
   labs(x = "Time", y = "New positives") +
   scale_x_date(date_breaks = '5 days',
