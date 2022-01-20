@@ -1,6 +1,7 @@
 #### Load dataset 
 library(data.table)
 
+################################## Dati covid protezione civile #######################################################
 df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 
 #select data about Sicily and the period to be considered
@@ -12,21 +13,26 @@ df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi_t
   df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi
 
 # remove unused columns
-df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
-df_extended <- df_extended[ , -c(22:24)]
-df_extended <- df_extended[ , -c(16:20)]
-
-
+df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", 
+                                                                                 "lat", "long", "note","tamponi_test_antigenico_rapido","codice_nuts_1","codice_nuts_2",
+                                                                                 "casi_da_sospetto_diagnostico", "casi_da_screening",
+                                                                                 "note_test",  "note_casi", "totale_positivi_test_molecolare", "totale_positivi_test_antigenico_rapido"))]
 
 # put data in Date format
 df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
 # add color
 df_extended$color <-NA
-df_extended$color[1:50]<- "bianco"
-df_extended$color[c(51:74, 103:105, 115:122, 138:152)] <- "arancione"
-df_extended$color[c(74:98,113,114)]<- "giallo"
-df_extended$color[c(99:102,106:112, 123:137)]<- "rosso"
+df_extended$color[which(df_extended$data >= "2020-09-16" & df_extended$data <= "2020-11-05")]<- "bianco"
+df_extended$color[which((df_extended$data >= "2020-11-06" & df_extended$data <= "2020-11-28") | 
+                          (df_extended$data >= "2020-12-28" & df_extended$data <= "2020-12-30") |
+                          (df_extended$data >= "2021-01-09" & df_extended$data <= "2021-01-16") |
+                          (df_extended$data >= "2021-02-01" & df_extended$data <= "2021-02-15"))] <- "arancione"
+df_extended$color[which((df_extended$data >= "2020-11-29" & df_extended$data <= "2020-12-23") |
+                          (df_extended$data >= "2021-01-07" & df_extended$data <= "2021-01-8"))] <- "giallo"
+df_extended$color[which((df_extended$data >= "2020-12-24" & df_extended$data <= "2020-12-27") |
+                          (df_extended$data >= "2020-12-31" & df_extended$data <= "2021-01-06") |
+                            (df_extended$data >= "2021-01-17" & df_extended$data <= "2021-01-31"))] <- "rosso"
 
 # add columns accounting for the number of daily swabs, daily deaths,
 # people daily discharged from the hospital and the number of ICU of one week before 
@@ -61,18 +67,49 @@ df_extended <- df_extended[-c(1:15),]
 row.names(df_extended) <- NULL 
 
 
-df <- df_extended[1:122,]
-df$data <- as.Date(df$data,  "%Y-%m-%d")
-
-fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
-
 ################################## Google data #######################################################
 #### Goolge data- Add data of google maps on the variation between the baseline
+#set1 <-data.frame(read.csv("Global_Mobility_Report.csv"))
+#set <- set1
+#set$date <- as.Date(set$date, "%Y-%m-%d")
+#set <- set[which(set$country_region_code == "IT"),]
+#set <- set[which(set$sub_region_1 == "Sicily"),]
+#set <-set[which(set$date >= "2020-09-16" ),]
+#set <- set[which(set$date <= "2021-02-14"),]
+
+#set <- set[c(1:152),]
+#row.names(set) <- NULL
+
+#fwrite(x=set,"google_data_sicily.csv")
+
 set <- data.frame(read.csv("google_data_sicily.csv"))
-row.names(set) <- NULL
-df_extended$variation_transit_station <- set$transit_stations_percent_change_from_baseline
-df_extended$variation_retail <- set$retail_and_recreation_percent_change_from_baseline
-df_extended$variation_workplace <- set$workplaces_percent_change_from_baseline
+
+set$var_station_prev <- NA
+set$var_workplace_prev <- NA
+set$var_retail_prev <- NA
+for(x in 16:nrow(set)) {
+  set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-14]
+  set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-14]
+  set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-14]
+}
+
+# remove first rows 
+set <- set[-c(1:15),]
+row.names(df_extended) <- NULL 
+
+
+df_extended$var_station <- set$transit_stations_percent_change_from_baseline
+df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
+df_extended$var_retail <- set$workplaces_percent_change_from_baseline
+df_extended$var_station_prev <- set$var_station_prev
+df_extended$var_workplace_prev <- set$var_workplace_prev
+df_extended$var_retail_prev <- set$var_retail_prev
+
+################ Save data ################
+### save the dataframe in a csv file
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
+
+
 
 # corr plot
 library("ggcorrplot")
@@ -90,7 +127,6 @@ par(mfrow = c(2,1))
 plot(nuovi_positivi ~ variation_transit_station, data = df_extended, pch =16, xlab = "variation train", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
 plot(nuovi_positivi ~ variation_retail, data = df_extended, pch =16, xlab = "variation retail", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
 plot(nuovi_positivi ~ variation_workplace, data = df_extended, pch =16, xlab = "variation workplace", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
-
 
 
 mod<-glm(nuovi_positivi ~ variation_workplace + variation_transit_station, data=df_extended, family=poisson)
@@ -111,4 +147,8 @@ library(ggplot2)
 ggplot(data = df_extended)+
   geom_point(aes(x=data,y=nuovi_positivi))+
   geom_line(aes(x=data, y=predict(mod, type="response")))
+
+
+
+
 
