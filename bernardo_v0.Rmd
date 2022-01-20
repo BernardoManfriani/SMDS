@@ -189,26 +189,34 @@ model_0 <- lm(nuovi_positivi ~ nuovi_decessi + color, data = df)
 
 #(model_0)
 
-model_1 <- loess(nuovi_positivi ~ nuovi_decessi + isolamento_domiciliare + ricoverati_con_sintomi_prev, data = df,control = loess.control(surface = "direct"), span = 0.90)
+model_1 <- loess(nuovi_positivi ~ nuovi_decessi + isolamento_domiciliare + ricoverati_con_sintomi_prev, data = df,control = loess.control(surface = "direct"), nsigma = 1.96, span = 0.7)
 
+model_loess <- loess.sd(y = df$nuovi_positivi, x = df$nuovi_decessi + df$ricoverati_con_sintomi_prev + df$isolamento_domiciliare)
+
+?loess
 smoothed_1 <- predict(model_1)
 smoothed_2 <- predict(model_1, newdata = df_extended, type = "response")
 
-smoothed_2
+smoothed_2 <- forecast(model_1, 15)
 #df$nuovi_positivi
-
+?forecast
 ggplot() + 
-  #geom_point(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
-  #geom_line(data = df, aes(x = data, y = smoothed_1, color="Model", group = 1)) +
+  geom_line(data = df, aes(x = data, y = model_loess$x, color="Model", group = 1)) +
+  geom_line(data = df, aes(x = data, y = model_loess$upper, color="upper", group = 1)) +
+  geom_line(data = df, aes(x = data, y = model_loess$lower, color="lower", group = 1)) +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) +
   geom_line(data = df_extended, aes(x = data, y = nuovi_positivi, color="Real", group = 1)) +
   #geom_point(data = df_extended, aes(x = data, y = smoothed_2, color="ModelPredicted", group = 1)) +
   geom_line(data = df_extended, aes(x = data, y = smoothed_2, color="ModelPredicted", group = 1)) +
+  geom_smooth(se = FALSE)+
   labs(title = "Model_V1", x = "Time", y = "Cases") +
     scale_x_date(date_breaks = '5 days',
                  date_labels = '%Y-%m-%d') +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust = 0.5))
 
+ggplot() + 
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="Real", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) +
+  geom_smooth(data = df, aes(x = data, y = df$nuovi_positivi))
 
 #plot(smoothed_1)
 ```
