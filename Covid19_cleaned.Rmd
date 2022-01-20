@@ -90,7 +90,7 @@ corrplot(M,col.lim=c(0,1),is.corr=FALSE, method="color", col=col(200), type="low
 We can see there are many variables which are highly related, though this relationship can be due to the fact that they are not independent. While for others variables we observe a poor correlation while we would have expected something different, for example for the number of swabs carried out.
 For this reason new variables were introduced for those values which account for the total amount of cases since the beginning of the pandemic.
 
--   nuovi_tamponi: swabs carried out daily (tamponi current day - tamponi previous day) [by the 15/01 were counted also the antigenic tests]
+-   nuovi_tamponi: swabs carried out daily (tamponi current day - tamponi predious day) [by the 15/01 were counted also the antigenic tests]
 
 -   nuovi_decessi: daily deaths (deceduti current day - deceduti previous day)
 
@@ -101,6 +101,7 @@ Then a new correlation plot is made to show which are the most highly correlated
 ```{r correlation on chosen covariates, echo=FALSE, message=FALSE, warning=FALSE}
 library("ggcorrplot")
 library("corrplot")
+library("dvmisc")
 cols <- c("ricoverati_con_sintomi", "isolamento_domiciliare","nuovi_decessi", "terapia_intensiva", "nuovi_tamponi_pcr", "nuovi_positivi")
 M=cor(df[,cols])
 colnames(M) <- c("A", "B", "C", "D", "E", "F")
@@ -269,8 +270,8 @@ We start building our model looking at the relationship between our response var
 formula <- paste0("nuovi_positivi ~ ", c("ricoverati_con_sintomi", 
              "ricoverati_con_sintomi + color", 
              "ricoverati_con_sintomi * color", 
-             "ricoverati_con_sintomi + color + data", 
-             "ricoverati_con_sintomi * color + data"))
+             "ricoverati_con_sintomi + color + nuovi_tamponi_pcr", 
+             "(ricoverati_con_sintomi + nuovi_tamponi_pcr) * color"))
 
 lm_mod1 <- glm(eval(formula[1]), data = df, family="gaussian")
 lm_mod2 <- glm(eval(formula[2]), data = df, family="gaussian")
@@ -280,9 +281,9 @@ lm_mod5 <- glm(eval(formula[5]), data = df, family="gaussian")
 
 # summary(lm_mod1)
 # summary(lm_mod2)
-# summary(lm_mod3)
+ summary(lm_mod3)
 # summary(lm_mod4)
-
+ summary(lm_mod5)
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
   geom_line(data = df, aes(x = data, y = predict(lm_mod1), color = "model 1", group = 1)) +
@@ -294,13 +295,16 @@ ggplot() +
   scale_x_date(date_breaks = '5 days',
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
 ```
+
 
 ```{r lm table,  echo=FALSE, message=FALSE, warning=FALSE}
 lm_aic <- AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4, lm_mod5)
+lm_mselm<-rbind(get_mse(lm_mod1),get_mse(lm_mod2),get_mse(lm_mod3),get_mse(lm_mod4),get_mse(lm_mod5))
 
-lm_table <- data.frame(formula,lm_aic[2])
-colnames(lm_table) <- c("Model", "AIC")
+lm_table <- data.frame(formula,lm_aic[2], lm_mselm)
+colnames(lm_table) <- c("Model", "AIC", "MSE")
 
 n<- dim(lm_table)[1]
 
@@ -309,11 +313,13 @@ tt3 <- ttheme_minimal(
   colhead=list(bg_params=list(fill="#cee4f5"),fg_params=list(col="#0c1b4a",fontsize=14, fontface="bold",hjust=0, x=c(0.02,0.3)),padding=unit.c(unit(4, "mm"), unit(10, "mm"))),
   rowhead=list(fg_params=list(col="orange", fontface=3L, hjust=0, x=0)))
 
+png("images/lm_table.png", width=10,height=8,units="in",res=1500)
 grid.newpage()
 grid.table(lm_table, rows = NULL, theme = tt3)
-
+dev.off()
 ```
 
+Moltiplicare per il colore invece di sommare fa si che cambi l'inclinazione della retta.
 <br>
 
 ### Generalized linear models
@@ -321,15 +327,35 @@ grid.table(lm_table, rows = NULL, theme = tt3)
 ```{r glm, echo=FALSE, message=FALSE, warning=FALSE}
 
 glm_mod1 <- glm(eval(formula[1]), data = df, family=poisson(link = "log"))
-glm_mod2 <- glm(eval(formula[2]), data = df, family=poisson(link = "log"))
-glm_mod3 <- glm(eval(formula[3]), data = df, family=poisson(link = "log"))
-glm_mod4 <- glm(eval(formula[4]), data = df, family=poisson(link = "log"))
-glm_mod5 <- glm(eval(formula[4]), data = df, family=poisson(link = "log"))
 
+
+glm_mod2 <- glm(eval(formula[2]), data = df, family=poisson(link = "log"))
+
+
+glm_mod3 <- glm(eval(formula[3]), data = df, family=poisson(link = "log"))
+
+
+glm_mod4 <- glm(eval(formula[4]), data = df, family=poisson(link = "log"))
+
+
+glm_mod5 <- glm(eval(formula[5]), data = df, family=poisson(link = "log"))
+
+
+
+
+
+
+par(mfrwo=c(2,2))
 # summary(glm_mod1)
+ plot(glm_mod1)
 # summary(glm_mod2)
+ plot(glm_mod2)
 # summary(glm_mod3)
+ plot(glm_mod3)
 # summary(glm_mod4)
+ plot(glm_mod4)
+summary(glm_mod5)
+plot(glm_mod5)
 
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
@@ -343,22 +369,110 @@ ggplot() +
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
+  
+
+
 AIC(glm_mod1, glm_mod2, glm_mod3, glm_mod4, glm_mod5)
 
 
 ```
 
+
 ```{r glm table,  echo=FALSE, message=FALSE, warning=FALSE}
 glm_aic <- AIC(glm_mod1,glm_mod2,glm_mod3,glm_mod4, glm_mod5)
+glm_mselm<-rbind(get_mse(glm_mod1),get_mse(glm_mod2),get_mse(glm_mod3),get_mse(glm_mod4),get_mse(glm_mod5))
 
-glm_table <- data.frame(formula,glm_aic[2])
-colnames(glm_table) <- c("Model", "AIC")
+glm_table <- data.frame(formula,glm_aic[2], glm_mselm)
+colnames(glm_table) <- c("Model", "AIC", "MSE")
+
 
 library(gtable)
-
+png("images/glm_table.png", width=10,height=8,units="in",res=1500)
 grid.newpage()
 grid.table(glm_table, rows = NULL, theme = tt3)
+dev.off()
+```
+#GLM with negative
+```{r}
+require("MASS")
+nrw<-length(df[,1])
+listlm<-c("nglmod1","nglmod2","nglmod3","nglmod4","nglmod5")
+param<-  c(" ricoverati_con_sintomi", 
+             " ricoverati_con_sintomi + color", 
+             " ricoverati_con_sintomi * color", 
+             " ricoverati_con_sintomi + color + nuovi_tamponi_pcr", 
+             " (ricoverati_con_sintomi + nuovi_tamponi_pcr) * color")
+num_var<-5
+l<-colnames(df)
+counter<-1
+str<-"nuovi_positivi"
+for (i in 1:num_var){
+   if(counter>num_var) break
+  name<-paste("nglmod",counter, sep="")
+  f<-as.formula(paste(str, param[counter] ,sep = " ~ "))
+  tmp<-glm.nb(formula=f, data = df)
+  assign(name,tmp) 
+  counter = counter +1
+}
+Gplot<-ggplot() +
+     geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(x = "Time", y = "New positives") 
+counter<-1
+tmpdf<-NULL
+boh<-rep(0,nrw)
+y<-matrix(nrow=nrw, ncol=num_var)
+tmp<-nrw*num_var
+m<-rep(0,tmp)
+for(i in listlm){
+  name<-paste("model",counter,sep="")
+  tmp1<-paste("tmpdf",counter,sep="")
+    tmp<-as.name(i)
+  y[,counter]<-predict(eval(tmp),type="response")
 
+l<-(nrw*(counter-1))
+if(counter==1) l=1
+r<-(nrw*counter)
+m[l:r]<-name
+counter<-counter+1
+}
+y<-as.vector(y)
+x<-rep(df$data,num_var)
+dfn<-data.frame("x"=x,"y"=y,"model"=m)
+Gplot<-Gplot+geom_line( data=dfn,aes(x = x, y = y, color=model, group =model)) 
+AIC(nglmod1,nglmod2,nglmod3,nglmod4)
+Gplot  
+AICn <- rbind(extractAIC(nglmod1)[2],extractAIC(nglmod2)[2],
+             extractAIC(nglmod3)[2])
+#BIC <- rbind(extractAIC(lm1, k=log(n))[2],extractAIC(lm2,k=log(n))[2],
+ #            extractAIC(lm3,k=log(n))[2],extractAIC(lm4,k=log(n))[2])
+Gplot 
+Devi<-rbind(summary(nglmod1)$deviance,summary(nglmod2)$deviance,summary(nglmod3)$deviance)
+## Model checking - Residual plots
+for(i in listlm){
+   tmp<-as.name(i)
+   pred <- predict(eval(tmp))
+   y_res <- df$nuovi_positivi - pred
+  plot(df$nuovi_positivi, y_res, xlab ="explanatory variable", ylab = "residuals",main=i)
+  plot(eval(tmp))
+}
+```
+
+
+```{r ngl table,  echo=FALSE, message=FALSE, warning=FALSE}
+ngl_aic <- AIC(nglmod1,nglmod2,nglmod3,nglmod4, nglmod5)
+ngl_mselm<-rbind(get_mse(nglmod1),get_mse(nglmod2),get_mse(nglmod3),get_mse(nglmod4),get_mse(nglmod5))
+
+ngl_table <- data.frame(formula,nglaic[2], ngl_mselm)
+colnames(ngl_table) <- c("Model", "AIC", "MSE")
+
+
+library(gtable)
+png("images/glm_table.png", width=10,height=8,units="in",res=1500)
+grid.newpage()
+grid.table(ngl_table, rows = NULL, theme = tt3)
+dev.off()
 ```
 
 ```{r glm residuals, echo =FALSE, message=FALSE, warning=FALSE}
@@ -477,6 +591,7 @@ ggplot() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ```
+
 
 ## GAM
 Since the best glm model is the last one (from the AIC ), I will try to build a GAM with same covariates.
