@@ -403,8 +403,14 @@ grid.newpage()
 grid.table(glm_table, rows = NULL, theme = tt3)
 dev.off()
 ```
+<<<<<<< HEAD
 #GLM with negative
 ```{r nglm, echo=FALSE}
+=======
+
+#GLM with negative binomial
+```{r}
+>>>>>>> ada05ec466acf60e5ee244a9d99355c297a2a464
 require("MASS")
 nrw<-length(df[,1])
 listlm<-c("nglmod1","nglmod2","nglmod3","nglmod4","nglmod5")
