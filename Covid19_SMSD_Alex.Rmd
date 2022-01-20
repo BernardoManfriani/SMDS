@@ -272,10 +272,26 @@ viff
 ```
 ```{r}
 
+pred <- predict(lmod3,type='response')
+se_link = predict(lmod3,   type = 'response', se.fit = TRUE)$se.fit
+ilink <- gaussian()$linkinv
+ndata <- data.frame(fit_resp  = ilink(pred),
+                right_upr = ilink(pred + ( 2.575829 * se_link)),
+                right_lwr = ilink(pred - ( 2.575829 * se_link)))
+
+ndata$data=df$data
+ggplot()+ geom_ribbon(data = ndata,
+                  aes(x= data,  ymin=right_lwr, ymax = right_upr),
+                  alpha = 0.1)
+
+
 ```
 ##Building GLM
 
 ```{r}
+library('readr')
+library('tibble')
+library('dplyr')
 nrw<-length(df[,1])
 listlm<-c("pglmod1","pglmod2","pglmod3")
 param<-c("ricoverati_con_sintomi +nuovi_tamponi_pcr","ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data","(ricoverati_con_sintomi+nuovi_tamponi_pcr)*color +data")
@@ -334,8 +350,17 @@ for(i in listlm){
   plot(df$nuovi_positivi, y_res, xlab ="explanatory variable", ylab = "residuals",main=i)
   plot(eval(tmp))
 }
-
+       
 ```
+```{r}
+pred <- predict(pglmod3,type='response')
+se_link = predict(pglmod3,   type = 'response', se.fit = TRUE)$se.fit
+ilink <- poisson()$linkinv
+ndata <- data.frame(fit_resp  = ilink(pred),
+                right_upr = ilink(pred + ( 2.575829 * se_link)),
+                right_lwr = ilink(pred - ( 2.575829 * se_link)))
+```
+
 #GLM with negative
 ```{r}
 require("MASS")
@@ -562,23 +587,35 @@ AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4)
 ### Generalized linear models
 
 ```{r glm, echo=FALSE, message=FALSE, warning=FALSE}
-
-glm_mod1 <- glm(nuovi_positivi ~ ricoverati_con_sintomi + color, data = df, family=poisson(link = "log"))
-glm_mod2 <- glm(nuovi_positivi ~ ricoverati_con_sintomi + color + data, data = df, family=poisson(link = "log"))
-glm_mod3 <- glm(nuovi_positivi ~ ricoverati_con_sintomi * color + data, data = df, family=poisson(link = "log"))
+glm_mod1 <- glm(nuovi_positivi ~ ricoverati_con_sintomi +nuovi_tamponi_pcr, data = df, family=poisson(link = "log"))
+glm_mod2 <- glm(nuovi_positivi ~ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data, data = df, family=poisson(link = "log"))
+glm_mod3 <- glm(nuovi_positivi ~ ricoverati_con_sintomi+(nuovi_tamponi_pcr*color) +data, data = df, family=poisson(link = "log"))
 glm_mod4 <- glm(nuovi_positivi ~ (ricoverati_con_sintomi + terapia_intensiva) * color + data, data = df, family=poisson(link = "log"))
 
 summary(glm_mod1)
 summary(glm_mod2)
 summary(glm_mod3)
 summary(glm_mod4)
-
+c1<-confint(glm_mod1,level=0.99999)
+c2<-confint(glm_mod2)
+c3<-confint(glm_mod3)
+c4<-confint(glm_mod4)
+ilink <- gaussian()$linkinv
+y_lower<-exp(c1[1,1]+c1[2,1]*df$ricoverati_con_sintomi +c1[3,1]*df$nuovi_tamponi_pcr)
+y_higher<-exp(c1[1,2]+c1[2,2]*df$ricoverati_con_sintomi +c1[3,2]*df$nuovi_tamponi_pcr)
+coef<-glm_mod1$coefficients
+y_pred<-exp(coef[1]+coef[2]*df$ricoverati_con_sintomi+coef[3]*df$nuovi_tamponi_pcr)
+mydata=cbind(df$ricoverati_con_sintomi,df$nuovi_tamponi_pcr)
+mydata=as.data.frame(mydata)
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
-geom_line(data = df, aes(x = data, y = predict(glm_mod1,type="response"), color = "model 1", group = 1)) +
-geom_line(data = df, aes(x = data, y = predict(glm_mod2,type="response"), color = "model 2", group = 1)) +
-geom_line(data = df, aes(x = data, y = predict(glm_mod3,type="response"), color = "model 3", group = 1)) +
-geom_line(data = df, aes(x = data, y = predict(glm_mod4,type="response"), color = "model 4", group = 1)) +
+geom_line(data = df, aes(x = data, y = y_pred, color = "model 1", group = 1))+
+  geom_ribbon(data = df,aes(x=data,ymin=y_lower,ymax= y_higher,color="interval"),alpha=0.5)
+#  geom_line(data = df, aes(x = data, y = y_lower, color = "model lower 1", group = 1))+
+# geom_line(data = df, aes(x = data, y = y_higher, color = "model higher 1", group = 1))
+#geom_line(data = df, aes(x = data, y = predict(glm_mod2,type="response"), color = "model 2", group = 1)) +
+#geom_line(data = df, aes(x = data, y = predict(glm_mod3,type="response"), color = "model 3", group = 1)) +
+#geom_line(data = df, aes(x = data, y = predict(glm_mod4,type="response"), color = "model 4", group = 1)) +
 
   labs(x = "Time", y = "New positives") +
   scale_x_date(date_breaks = '5 days',
