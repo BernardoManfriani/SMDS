@@ -216,7 +216,10 @@ ggplot() +
 
 Some model based on time series
 ```{r}
-library(lubridate)
+library(tidyverse)      # data manipulation and visualization
+library(lubridate)      # easily work with dates and times
+library(fpp2)           # working with time series data
+library(zoo)
 library(forecast)
 library(HSAR)
 
@@ -224,13 +227,63 @@ library(HSAR)
 #model_2 <- ts(nuovi_positivi ~ nuovi_decessi  + isolamento_domiciliare, data = df)
 
 
+
 model_ts <- ts(data = df$nuovi_positivi, start =  1, end = 123)
 
-fit <- auto.arima(model_ts)
-plot(forecast(fit, 15))
+model_ts2 <- ts(data = df$nuovi_positivi, start =  1, frequency = 123)
 
-?plot()
+plot(model_ts2)
+plot(model_ts)
+fit <- auto.arima(model_ts)
+
+plot(forecast(fit, 15))
+a <- predict(fit, n.ahead=15)
+plot(x = 1:15,y = a$pred)
+
+plot(fit)
+
+ggplot() + 
+  #geom_line(data = df_extende, aes(x = data, y = nuovi_positivi, color="Real", group = 1))+
+  geom_line(data = df_extended, aes(x = data, y = forecast(fit,14), color="Model", group = 1))
+
+df_extended$data
+forecast(fit,14)
+plot(auto.arima(model_ts))
+
+model_ts1 <- ts(cbind(df$nuovi_positivi, df$nuovi_decessi, df$isolamento_domiciliare), start =  1, end = 123)
+
+model_ts1
+plot(model_ts1)
+
+fit <- sma(model_ts1)
+
+?arima
 
 ```
 
+TIME SERIES
+
+```{r}
+library(tidyverse)      # data manipulation and visualization
+library(lubridate)      # easily work with dates and times
+library(fpp2)           # working with time series data
+library(zoo)
+library(forecast)
+library(HSAR)
+
+df_sicily_global <- df_global[which(df_global$denominazione_regione == "Sicilia" & (df_global$data >= "2020-02-24T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
+model_ts <- ts(data = df_sicily_global$nuovi_positivi, start =  1, end = 178, frequency = 2)
+dec <- decompose(model_ts, type = "multiplicative")
+names(dec)
+fit <- nnetar(model_ts)
+plot(dec)
+plot(forecast(fit), 60)
+autoplot(forecast(auto.arima(model_ts, d = 2), h = 20))
+?auto.arima
+model_ts3 <- ts(df$nuovi_positivi, start = c(10), end = c())
+
+df_sicily_global$nuovi_positivi
+df_sicily_global
+
+```
 
