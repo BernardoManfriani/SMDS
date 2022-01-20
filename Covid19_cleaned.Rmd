@@ -395,7 +395,8 @@ grid.newpage()
 grid.table(glm_table, rows = NULL, theme = tt3)
 dev.off()
 ```
-#GLM with negative
+
+#GLM with negative binomial
 ```{r}
 require("MASS")
 nrw<-length(df[,1])
