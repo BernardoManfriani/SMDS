@@ -365,9 +365,13 @@ ndata <- data.frame(fit_resp  = ilink(pred),
 ```{r}
 require("MASS")
 nrw<-length(df[,1])
-listlm<-c("nglmod1","nglmod2","nglmod3")
-param<-c("ricoverati_con_sintomi +nuovi_tamponi_pcr","ricoverati_con_sintomi +nuovi_tamponi_pcr+color+data","(ricoverati_con_sintomi+nuovi_tamponi_pcr)*color +data")
-num_var<-3
+listlm<-c("nglmod1","nglmod2","nglmod3","nglmod4","nglmod5")
+param<-  c(" ricoverati_con_sintomi", 
+             " ricoverati_con_sintomi + color", 
+             " ricoverati_con_sintomi * color", 
+             " ricoverati_con_sintomi + color + nuovi_tamponi_pcr", 
+             " (ricoverati_con_sintomi + nuovi_tamponi_pcr) * color")
+num_var<-5
 l<-colnames(df)
 counter<-1
 str<-"nuovi_positivi"
