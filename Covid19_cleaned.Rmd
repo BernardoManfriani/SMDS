@@ -297,7 +297,8 @@ ggplot() +
 lm_aic <- AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4, lm_mod5)
 lm_mselm<-rbind(get_mse(lm_mod1),get_mse(lm_mod2),get_mse(lm_mod3),get_mse(lm_mod4),get_mse(lm_mod5))
 
-lm_table <- data.frame(formula,lm_aic[2], lm_mselm)
+
+lm_table <- data.frame(formula,lm_aic[2])
 colnames(lm_table) <- c("Model", "AIC", "MSE")
 
 n<- dim(lm_table)[1]
@@ -403,14 +404,12 @@ grid.newpage()
 grid.table(glm_table, rows = NULL, theme = tt3)
 dev.off()
 ```
-<<<<<<< HEAD
+
 #GLM with negative
+
 ```{r nglm, echo=FALSE}
-=======
 
 #GLM with negative binomial
-```{r}
->>>>>>> ada05ec466acf60e5ee244a9d99355c297a2a464
 require("MASS")
 nrw<-length(df[,1])
 listlm<-c("nglmod1","nglmod2","nglmod3","nglmod4","nglmod5")
@@ -498,19 +497,67 @@ dev.off()
 
 ```{r performance table}
 library(performance)
+library(gtable)
+library(grid)
+library(gridExtra)
+
+formula <- paste0("nuovi_positivi ~ ", c("(ricoverati_con_sintomi + nuovi_tamponi_pcr) * color" , "ricoverati_con_sintomi + color + nuovi_tamponi_pcr","ricoverati_con_sintomi * color","ricoverati_con_sintomi + color" ,"ricoverati_con_sintomi" ))
+
+
 all_compare <- compare_performance(lm_mod1,lm_mod2,lm_mod3,lm_mod4,lm_mod5,glm_mod1,glm_mod2,glm_mod3,glm_mod4,glm_mod5,nglmod1,nglmod2,nglmod3,nglmod4,nglmod5, rank=TRUE)
 all_compare
+all_compare$Name <- c(formula,formula,formula)
 
 lm_compare <- compare_performance(lm_mod1,lm_mod2,lm_mod3,lm_mod4,lm_mod5, rank=TRUE)
+lm_aic <- AIC(lm_mod5,lm_mod4,lm_mod3,lm_mod2, lm_mod1)
+lm_compare$AIC <- lm_aic$AIC
 lm_compare
+lm_compare$Name <- formula
+
+
 
 glm_compare <- compare_performance(glm_mod1,glm_mod2,glm_mod3,glm_mod4,glm_mod5, rank=TRUE)
-glm_compare
+glm_compare <- glm_compare[,-c(6,7)]
+glm_aic <- AIC(glm_mod5,glm_mod4,glm_mod3,glm_mod2, glm_mod1)
+glm_compare$R2_Nagelkerke <- glm_aic$AIC
+colnames(glm_compare)[3] <- "AIC" 
+glm_compare$Name <- formula
 
-ngb_compare <- compare_performance(nglmod1, nglmod2,nglmod3,nglmod4,nglmod5)
+
+ngb_compare <- compare_performance(nglmod1, nglmod2,nglmod3,nglmod4,nglmod5, rank=TRUE)
+ngb_compare <- ngb_compare[,-c(6,7)]
+ngb_aic <- AIC(nglmod5,nglmod4,nglmod3,nglmod2, nglmod1)
+ngb_compare$R2_Nagelkerke <- ngb_aic$AIC
+colnames(ngb_compare)[3] <- "AIC" 
+ngb_compare$Name <- formula
+
 ngb_compare
 
+
+
+
+# png("images/all_compare_table.png", width=28,height=9,units="in",res=1000)
+# grid.newpage()
+# grid.table(all_compare, rows = NULL, theme = tt3)
+# dev.off()
+
+png("images/lm_compare_table.png", width = 20, height = 8, units = "in", res=1000)
+grid.newpage()
+grid.table(lm_compare,rows = NULL, theme = tt3)
+dev.off()
+
+png("images/glm_compare_table.png", width=20,height=8,units="in",res=1000)
+grid.newpage()
+grid.table(glm_compare, rows = NULL, theme = tt3)
+dev.off()
+
+png("images/ngb_compare_table.png", width=20,height=8,units="in",res=1000)
+grid.newpage()
+grid.table(ngb_compare, rows = NULL, theme = tt3)
+dev.off()
+
 ```
+
 
 
 #GLM prev
@@ -554,7 +601,7 @@ We make another attempt considering the previous model but substituting each var
 
 ```{r glm_mod7, echo=FALSE, message=FALSE, warning=FALSE}
 
-glm_mod7 <- glm(nuovi_positivi ~ ( I(ricoverati_con_sintomi_prev^2)+ ricoverati_con_sintomi_prev  + I(nuovi_tamponi_pcr_prev^2) + nuovi_tamponi_pcr_prev )* color + data , data = df)
+glm_mod7 <- glm(nuovi_positivi ~ ( I(terapia_intensiva_prev^2) + terapia_intensiva)* color_prev , data = df)
 
 glm_mod7_pred <- predict(glm_mod7, newdata = df, type = "response", se.fit = TRUE)
 
