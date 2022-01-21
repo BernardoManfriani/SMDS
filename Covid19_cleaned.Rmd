@@ -295,7 +295,7 @@ ggplot() +
 
 ```{r lm table,  echo=FALSE, message=FALSE, warning=FALSE}
 lm_aic <- AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4, lm_mod5)
-lm_mselm<-rbind(get_mse(lm_mod1),get_mse(lm_mod2),get_mse(lm_mod3),get_mse(lm_mod4),get_mse(lm_mod5))
+#lm_mselm<-rbind(get_mse(lm_mod1),get_mse(lm_mod2),get_mse(lm_mod3),get_mse(lm_mod4),get_mse(lm_mod5))
 
 
 lm_table <- data.frame(formula,lm_aic[2])

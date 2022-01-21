@@ -34,6 +34,65 @@ df_extended$color[which((df_extended$data >= "2020-12-24" & df_extended$data <= 
                           (df_extended$data >= "2020-12-31" & df_extended$data <= "2021-01-06") |
                             (df_extended$data >= "2021-01-17" & df_extended$data <= "2021-01-31"))] <- "rosso"
 
+continuous_color <- function() {
+  new_color <- NA
+  previous = ""
+  current = "bianco"
+  new_color[1] = 0
+  l <- df_extended$color
+  count <- 0
+  for (i in 2:length(l)) {
+    if(l[i] == "bianco") {
+      new_color[i] = new_color[i-1] - 0.1
+      previous = "bianco"
+      current = "bianco"
+    }
+    else if(l[i] == "rosso") {
+      decrease = 1*0.1
+      new_color[i] = new_color[i-1] + decrease
+      if(current != "rosso") {
+        previous = current 
+        current = "rosso" 
+      }
+    }
+    else if(l[i] == "giallo") {
+      if(previous == "arancione" || previous  == "rosso"){
+        decrease = -1*0.1
+        new_color[i] = new_color[i-1] + decrease
+      }  
+      else {
+        decrease = 1*0.1
+        new_color[i] = new_color[i-1] + decrease
+      }
+      if(current != "giallo") {
+        previous = current 
+        current = "giallo" 
+      }
+    }
+    else {
+      if(previous == "rosso") {
+        decrease = -1*0.1 
+      }
+      else {
+        decrease = 1*0.1
+      }
+      new_color[i] =  new_color[i-1] + decrease
+      if(current != "arancione") {
+        previous = current 
+        current = "arancione" 
+      }
+    }
+  }
+  l <- new_color
+  return(l)
+}
+
+l <- continuous_color()
+df_extended$new_color <- NA
+df_extended$new_color <- l
+
+
+
 # add columns accounting for the number of daily swabs, daily deaths,
 # people daily discharged from the hospital and the number of ICU of one week before 
 df_extended$nuovi_tamponi_pcr <- NA
@@ -44,6 +103,7 @@ df_extended$ricoverati_con_sintomi_prev <- NA
 df_extended$nuovi_tamponi_pcr_prev <- NA
 df_extended$nuovi_positivi_prev <- NA
 df_extended$color_prev <- NA
+df_extended$new_color_prev <- NA
 
 
 # index reordering
@@ -60,6 +120,7 @@ for(x in (week+2):nrow(df_extended)) {
   df_extended$ricoverati_con_sintomi_prev[x] <- df_extended$ricoverati_con_sintomi[x-week]
   df_extended$nuovi_tamponi_pcr_prev[x]  <- df_extended$nuovi_tamponi_pcr[x-week]
   df_extended$color_prev[x] <- df_extended$color[x-week]
+  df_extended$new_color_prev[x] <- df_extended$new_color[x-week]
   df_extended$nuovi_positivi_prev[x] <- df_extended$nuovi_positivi[x-week]
 }
 
@@ -83,28 +144,28 @@ row.names(df_extended) <- NULL
 
 #fwrite(x=set,"google_data_sicily.csv")
 
-set <- data.frame(read.csv("google_data_sicily.csv"))
-
-set$var_station_prev <- NA
-set$var_workplace_prev <- NA
-set$var_retail_prev <- NA
-for(x in (week+2):nrow(set)) {
-  set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-week]
-  set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-week]
-  set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-week]
-}
-
-# remove first rows 
-set <- set[-c(1:15),]
-row.names(df_extended) <- NULL 
-
-
-df_extended$var_station <- set$transit_stations_percent_change_from_baseline
-df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
-df_extended$var_retail <- set$workplaces_percent_change_from_baseline
-df_extended$var_station_prev <- set$var_station_prev
-df_extended$var_workplace_prev <- set$var_workplace_prev
-df_extended$var_retail_prev <- set$var_retail_prev
+# set <- data.frame(read.csv("google_data_sicily.csv"))
+# 
+# set$var_station_prev <- NA
+# set$var_workplace_prev <- NA
+# set$var_retail_prev <- NA
+# for(x in (week+2):nrow(set)) {
+#   set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-week]
+#   set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-week]
+#   set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-week]
+# }
+# 
+# # remove first rows 
+# set <- set[-c(1:15),]
+# row.names(df_extended) <- NULL 
+# 
+# 
+# df_extended$var_station <- set$transit_stations_percent_change_from_baseline
+# df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
+# df_extended$var_retail <- set$workplaces_percent_change_from_baseline
+# df_extended$var_station_prev <- set$var_station_prev
+# df_extended$var_workplace_prev <- set$var_workplace_prev
+# df_extended$var_retail_prev <- set$var_retail_prev
 
 ################ Save data ################
 ### save the dataframe in a csv file
