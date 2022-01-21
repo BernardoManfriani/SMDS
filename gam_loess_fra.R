@@ -82,7 +82,7 @@ ggplot() +
 glm_prev <- glm(nuovi_positivi ~ (ricoverati_con_sintomi_prev + nuovi_tamponi_pcr_prev)*color_prev, data = df, family = poisson) 
 glm_current <- glm(nuovi_positivi ~ (ricoverati_con_sintomi + nuovi_tamponi_pcr)*color, data = df, family=poisson)
 gam_prev <- gam(nuovi_positivi ~  (ricoverati_con_sintomi_prev + nuovi_tamponi_pcr_prev )* color_prev  , data = df )
-gam_current <- gam(nuovi_positivi ~  s(ricoverati_con_sintomi) + s(nuovi_tamponi_pcr) + new_color  , data = df )
+gam_current <- gam(nuovi_positivi ~  s(ricoverati_con_sintomi) + s(nuovi_tamponi_pcr) + s(new_color)  , data = df )
 summary(glm_prev)
 summary(glm_current)
 summary(gam_prev)
