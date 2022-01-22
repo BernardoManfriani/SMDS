@@ -1623,5 +1623,3 @@ ggplot(data=df)+
 ggsave(paste0("images/lm_mod_col_vs_Y.png"), width = 12, height = 5, dpi = 200)
 
 ```
-
->>>>>>> cb555d9f5fc7b39e9648e12d290fe9e1df3646ce:Covid19_cleaned.Rmd
