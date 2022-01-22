@@ -230,6 +230,7 @@ p5 <- ggplot(df,aes(x=factor(color),y=isolamento_domiciliare))+
   geom_boxplot(outlier.color="black", fill=col_zone)+
   labs(x = " ", y = "isolamento domiciliare")
 
+p5
 #p4 + plot_spacer() + p5 + plot_layout(widths = c(4, 0.5,4))
 
 #ggsave(paste0("images/boxplot_color2.png"), width = 12, height = 5, dpi = 200)
@@ -255,6 +256,23 @@ plot(nuovi_positivi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tampo
 ## Building models
 
 We start building our model looking at the relationship between our response variable and its highest correlated predictor (which is given by people hospitalized with symptoms, maybe because the highest the number of people hospitalized, the higher the contagiousness and as a consequence the higher the number of new positives).
+
+#MODEL TRY--- chunk da sistemare 
+
+```{r}
+new1 <- lm(nuovi_positivi ~ nuovi_casi_testati + totale_positivi , data=df)
+new2 <- lm(nuovi_positivi ~ nuovi_casi_testati + totale_positivi + color , data=df)
+old2 <- lm(nuovi_positivi ~ nuovi_tamponi_pcr + ricoverati_con_sintomi + color, data=df)
+new3 <- glm(nuovi_positivi ~ nuovi_casi_testati + totale_positivi, data=df, family = poisson())
+
+check_model(new1)
+check_model(new2)
+check_model(old2)
+compare_performance(new1,new2, old2, rank= TRUE)
+
+```
+
+
 
 ### Linear models
 
@@ -747,16 +765,44 @@ ggplot() +
 
 ```{r plot}
 ggplot(data=df)+
-  geom_point(aes(x=ricoverati_con_sintomi, y=nuovi_positivi, color="point"))+
-  geom_line(aes(x=ricoverati_con_sintomi,y=predict(lm_mod1, type="response")))+
-  geom_line(aes(x=ricoverati_con_sintomi, y=predict(glm_mod1,type="response", color = "mod5")))
+  geom_point(aes(x=ricoverati_con_sintomi, y=nuovi_positivi), col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  geom_line(aes(x=ricoverati_con_sintomi,y=predict(glm_mod5, type="response"),color = "Fit", group = 1), size=0.75)+
+  scale_color_brewer(palette = "Dark2")
+ggsave(paste0("images/glm_mod_ric_vs_Y.png"), width = 12, height = 5, dpi = 200)
 
 ggplot(data=df)+
-   geom_boxplot(aes(x=color, y=nuovi_positivi, color="point"))+
-  geom_boxplot(aes(x=color,y=predict(lm_mod2, type="response") ,color="lm"))+
-  geom_boxplot(aes(x=color, y=predict(glm_mod2,type="response"),color = "gglm"))+
-  geom_jitter(aes(x=color, y=nuovi_positivi, color="point"),  width=0.2)+
-  geom_jitter(aes(x=color,y=predict(lm_mod2, type="response") ,color="lm"),  width=0.2)+
-  geom_jitter(aes(x=color, y=predict(glm_mod2,type="response"),color = "gglm"), width=0.2)
+  geom_point(aes(x=nuovi_tamponi_pcr, y=nuovi_positivi), col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  geom_line(aes(x=nuovi_tamponi_pcr,y=predict(glm_mod5, type="response"),color = "Fit", group = 1), size=0.75)+
+  scale_color_brewer(palette = "Dark2")
+ggsave(paste0("images/glm_mod_pcr_vs_Y.png"), width = 12, height = 5, dpi = 200)
+
+ggplot(data=df)+
+  geom_point(aes(x=ricoverati_con_sintomi, y=nuovi_positivi), col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  geom_line(aes(x=ricoverati_con_sintomi,y=predict(lm_mod5, type="response"),color = "Fit", group = 1), size=0.75)+
+  scale_color_brewer(palette = "Dark2")
+ggsave(paste0("images/lm_mod_ric_vs_Y.png"), width = 12, height = 5, dpi = 200)
+
+ggplot(data=df)+
+  geom_point(aes(x=nuovi_tamponi_pcr, y=nuovi_positivi), col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  geom_line(aes(x=nuovi_tamponi_pcr,y=predict(lm_mod5, type="response"),color = "Fit", group = 1), size=0.75)+
+  scale_color_brewer(palette = "Dark2")
+ggsave(paste0("images/lm_mod_pcr_vs_Y.png"), width = 12, height = 5, dpi = 200)
+
+library(akima)
+
+ggplot(data=df)+
+  geom_contour(aes(df$ricoverati_con_sintomi, df$nuovi_tamponi_pcr, z=predict(lm_mod5)))
+
+ggplot(df,aes(x=factor(color),y=nuovi_positivi))+
+  geom_boxplot(outlier.color="black", fill=col_zone)+
+   geom_jitter(aes(x=color, y=nuovi_positivi),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  labs(x = " ", y = "nuovi positivi")
+
+ggplot(data=df)+
+   geom_jitter(aes(x=color, y=predict(glm_mod5,type="response")))+
+  geom_boxplot(aes(x=color, y=predict(glm_mod5,type="response"),color = "fit"))+
+  scale_color_brewer(palette = "Dark2")
+ggsave(paste0("images/lm_mod_col_vs_Y.png"), width = 12, height = 5, dpi = 200)
+
 ```
 

@@ -95,6 +95,7 @@ df_extended$new_color <- l
 
 # add columns accounting for the number of daily swabs, daily deaths,
 # people daily discharged from the hospital and the number of ICU of one week before 
+df_extended$nuovi_casi_testati <- NA
 df_extended$nuovi_tamponi_pcr <- NA
 df_extended$nuovi_decessi <- NA
 df_extended$nuovi_dimessi <- NA
@@ -110,6 +111,7 @@ df_extended$new_color_prev <- NA
 row.names(df_extended) <- NULL 
 
 for(x in 2:nrow(df_extended)) {
+  df_extended$nuovi_casi_testati[x] <- df_extended$casi_testati[x] - df_extended$casi_testati[x-1]
   df_extended$nuovi_tamponi_pcr[x] <- df_extended$tamponi_test_molecolare[x] - df_extended$tamponi_test_molecolare[x-1] # the number of new swabs carried out] # the number of new swabs carried out
   df_extended$nuovi_decessi[x] <- df_extended$deceduti[x] - df_extended$deceduti[x-1] # daily deaths
   df_extended$nuovi_dimessi[x] <- df_extended$dimessi_guariti[x] - df_extended$dimessi_guariti[x-1] # variation in the number of people discharged from the hospital
