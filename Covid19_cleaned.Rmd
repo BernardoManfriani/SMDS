@@ -142,17 +142,17 @@ corrplot(M, method="color", col=col(200),  col.lim=c(0,1), is.corr=FALSE, type="
 Further investigate the correlations found between each pair of variables
 
 ```{r scatterplot covariates, echo=FALSE}
-#png("images/scatterplot_covariates.png", width=13,height=6.5,bg = "white",units="in",res=1500)
+png("images/scatterplot_covariates.png", width=13,height=6.5,bg = "white",units="in",res=1500)
 
 par(mfrow=c(2,3))
-plot(ricoverati_con_sintomi ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "ricoverati con sintomi")
-plot(ricoverati_con_sintomi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "ricoverati con sintomi")
-plot(terapia_intensiva ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "terapia intensiva")
-plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare")
-plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare")
-plot(isolamento_domiciliare ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "isolamento domiciliare")
+plot(ricoverati_con_sintomi ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "ricoverati con sintomi", col="#0b084d")
+plot(ricoverati_con_sintomi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "ricoverati con sintomi", col="#0b084d")
+plot(terapia_intensiva ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "terapia intensiva", col = "#0b084d")
+plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare", col="#0b084d")
+plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare", col="#0b084d")
+plot(isolamento_domiciliare ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "isolamento domiciliare", col="#0b084d")
 
-#dev.off()
+dev.off()
 ```
 
 The following plot shows the trends of previous variable through all the time period considered, it can be seen how it is almost the same for each of them, exept for the number of swabs.
@@ -190,16 +190,19 @@ The first covariate which has been considered and added is related to the restri
 ```{r boxplot_scatterplot, echo =FALSE}
 library(ggplot2)
 library(RColorBrewer)
+
+col <- c("#F9F6F0","#FFCD58","#FF9636","#A82810")
+
 ggplot(df,aes(x=factor(color),y=nuovi_positivi))+
-  geom_boxplot(outlier.color="black", fill=col_zone) +
-  labs(x = " ", y = "nuovi positivi")
+  geom_boxplot(outlier.color="black", fill=col) +
+  labs(x = " ", y = "nuovi positivi")+
+  geom_jitter(color="black", width = 0) 
 
 #ggsave(paste0("images/boxplot_color.png"), width = 8, height = 5, dpi = 200)
 
-col <- c("#F9F6F0","#FFCD58","#FF9636","#A82810")
 p2 <- ggplot(df,aes(x=factor(color),y=ricoverati_con_sintomi)) +
   geom_boxplot(outlier.color="black", fill=col) +
-  labs(x = " ", y = "nuovi decessi") +
+  labs(x = " ", y = "ricoverati con sintomi") +
   geom_jitter(color="black", width = 0) 
 
 p3 <- ggplot(df,aes(x=factor(color),y=nuovi_tamponi_pcr)) +
@@ -207,10 +210,11 @@ p3 <- ggplot(df,aes(x=factor(color),y=nuovi_tamponi_pcr)) +
   labs(x = " ", y = "nuovi tamponi") +
   geom_jitter(color="black", width = 0) 
 
-p2 +  plot_spacer() + p3 + plot_layout(widths = c(4, 0.5, 4))
+p2
+#ggsave(paste0("images/boxplot_color1.png"), width = 8, height = 5, dpi = 200)
 
-#ggsave(paste0("images/boxplot_color1.png"), width = 12, height = 5, dpi = 200)
-
+p3
+#ggsave(paste0("images/boxplot_color2.png"), width = 8, height = 5, dpi = 200)
 
 ggplot(df, aes(x=weekdays(df$data), y=df$nuovi_tamponi_pcr)) + 
     geom_boxplot(outlier.color="black", fill=c("#E7F2F8","#74BDCB","#B5E5CF","#EFE7BC","#E98973","#B99095","#88B2CC")) +
