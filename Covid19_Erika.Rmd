@@ -1,5 +1,4 @@
-<<<<<<< HEAD:Covid19_Erika.Rmd
-<<<<<<< HEAD:Covid19_Erika.Rmd
+
 ---
 title: "Covid-19 - SMSD"
 output:

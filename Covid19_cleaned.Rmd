@@ -87,20 +87,21 @@ library("corrplot")
 
 corr_df <- df
 corr_df$data <- as.numeric(corr_df$data)
-cols <- c("data", "ricoverati_con_sintomi","terapia_intensiva","totale_ospedalizzati", "isolamento_domiciliare", "totale_positivi", "dimessi_guariti", "deceduti", "tamponi","nuovi_positivi")
+cols <- c("data", "ricoverati_con_sintomi","terapia_intensiva","totale_ospedalizzati", "isolamento_domiciliare", "totale_positivi", "dimessi_guariti", "deceduti", "tamponi", "totale_casi", "casi_testati","nuovi_positivi")
 
 M=cor(corr_df[,cols])
-colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H", "I", "L")
+colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "K", "I")
 rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
 
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
 
-corrplot(M,col.lim=c(0,1),is.corr=FALSE, method="color", col=col(200), type="lower", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=0.7)
+corrplot(M,col.lim=c(-1,1),is.corr=FALSE, method="color", col=col(200), type="lower", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=0.7)
 
 # png("images/variables_corrplot.png", width=10,height=8,units="in",res=1500)
 # corrplot(M,col.lim=c(0,1),is.corr=FALSE, method="color",col=col(200),
 #      type="lower", addCoef.col = "black", tl.col = "black",tl.srt = 360, tl.offset = 1, tl.cex=1.1)
 # dev.off()
+
 
 ```
 <br>
@@ -120,9 +121,10 @@ Then a new correlation plot is made to show which are the most highly correlated
 library("ggcorrplot")
 library("corrplot")
 library("dvmisc")
-cols <- c("ricoverati_con_sintomi", "isolamento_domiciliare","nuovi_decessi", "terapia_intensiva", "nuovi_tamponi_pcr", "nuovi_positivi")
-M=cor(corr_df[,cols])
-colnames(M) <- c("A", "B", "C", "D", "E", "F")
+df$nuovi_tamponi <- df$nuovi_tamponi_pcr
+cols <- c("ricoverati_con_sintomi", "isolamento_domiciliare","terapia_intensiva", "nuovi_tamponi",  "nuovi_positivi")
+M=cor(df[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E")
 rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
 
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
@@ -142,27 +144,12 @@ Further investigate the correlations found between each pair of variables
 ```{r scatterplot covariates, echo=FALSE}
 #png("images/scatterplot_covariates.png", width=13,height=6.5,bg = "white",units="in",res=1500)
 
-par(mfrow=c(2,5))
+par(mfrow=c(2,3))
 plot(ricoverati_con_sintomi ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "ricoverati con sintomi")
-
-plot(ricoverati_con_sintomi ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "ricoverati con sintomi")
-
 plot(ricoverati_con_sintomi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "ricoverati con sintomi")
-
-
-plot(terapia_intensiva ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "terapia intensiva")
-
 plot(terapia_intensiva ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "terapia intensiva")
-
-plot(nuovi_decessi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "nuovi decessi")
-
 plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare")
-
-
-plot(isolamento_domiciliare ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "isolamento domiciliare")
-
 plot(isolamento_domiciliare ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "isolamento domiciliare")
-
 plot(isolamento_domiciliare ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "isolamento domiciliare")
 
 #dev.off()
@@ -176,8 +163,8 @@ p1 <- ggplot() +
   geom_point(data = df, aes(x = data, y = log(nuovi_positivi), group = 1))+ 
   geom_line(data = df, aes(x = data, y = log(nuovi_tamponi_pcr), color="nuovi tamponi", group = 1)) +
   geom_point(data = df, aes(x = data, y = log(nuovi_tamponi_pcr),color="nuovi tamponi", group = 1)) +
-  geom_line(data = df, aes(x = data, y = log(nuovi_decessi), color="nuovi decessi", group = 1)) +
-  geom_point(data = df, aes(x = data, y = log(nuovi_decessi),color="nuovi decessi", group = 1)) +
+  geom_line(data = df, aes(x = data, y = log(ricoverati_con_sintomi), color="ricoverati con sintomi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = log(ricoverati_con_sintomi),color="ricoverati con sintomi", group = 1)) +
   geom_line(data = df, aes(x = data, y = log(terapia_intensiva), color="terapia intensiva", group = 1)) +
   geom_point(data = df, aes(x = data, y = log(terapia_intensiva),color="terapia intensiva", group = 1)) +
   geom_line(data = df, aes(x = data, y = log(isolamento_domiciliare), color="isolamento domiciliare", group = 1)) +
@@ -185,11 +172,10 @@ p1 <- ggplot() +
   scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
   labs(y = "log") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  scale_colour_manual(values = c("nuovi positivi" = "black", "nuovi tamponi" ="#2f6d80", "nuovi decessi" = "#490e96", "terapia intensiva" = "#1a8f2f", "isolamento domiciliare" = "#851128")) 
+  scale_colour_manual(values = c("nuovi positivi" = "black", "nuovi tamponi" ="#2f6d80", "ricoverati con sintomi" = "#490e96", "terapia intensiva" = "#1a8f2f", "isolamento domiciliare" = "#851128")) 
 
 p1
 #ggsave(paste0( "images/variables_trend.png"), plot=p1, height=6, width=8, units="in", dpi = 150)
-
 ```
 
 
@@ -203,52 +189,48 @@ The first covariate which has been considered and added is related to the restri
 
 ```{r boxplot_scatterplot, echo =FALSE}
 library(ggplot2)
+library(RColorBrewer)
 ggplot(df,aes(x=factor(color),y=nuovi_positivi))+
-  geom_boxplot(outlier.color="black", fill=col_zone)+
+  geom_boxplot(outlier.color="black", fill=col_zone) +
   labs(x = " ", y = "nuovi positivi")
 
 #ggsave(paste0("images/boxplot_color.png"), width = 8, height = 5, dpi = 200)
 
+col <- c("#F9F6F0","#FFCD58","#FF9636","#A82810")
+p2 <- ggplot(df,aes(x=factor(color),y=ricoverati_con_sintomi)) +
+  geom_boxplot(outlier.color="black", fill=col) +
+  labs(x = " ", y = "nuovi decessi") +
+  geom_jitter(color="black", width = 0) 
 
-p2 <- ggplot(df,aes(x=factor(color),y=nuovi_decessi))+
-  geom_boxplot(outlier.color="black", fill=col_zone)+
-  labs(x = " ", y = "nuovi decessi")
+p3 <- ggplot(df,aes(x=factor(color),y=nuovi_tamponi_pcr)) +
+  geom_boxplot(outlier.color="black", fill=col) +
+  labs(x = " ", y = "nuovi tamponi") +
+  geom_jitter(color="black", width = 0) 
 
-p3 <- ggplot(df,aes(x=factor(color),y=nuovi_tamponi_pcr))+
-  geom_boxplot(outlier.color="black", fill=col_zone)+
-  labs(x = " ", y = "nuovi tamponi")
-
-#p2 +  plot_spacer() + p3 + plot_layout(widths = c(4, 0.5, 4))
+p2 +  plot_spacer() + p3 + plot_layout(widths = c(4, 0.5, 4))
 
 #ggsave(paste0("images/boxplot_color1.png"), width = 12, height = 5, dpi = 200)
 
-p4 <- ggplot(df,aes(x=factor(color),y=terapia_intensiva))+
-  geom_boxplot(outlier.color="black", fill=col_zone)+
-  labs(x = " ", y = "terapia intensiva")
 
-p5 <- ggplot(df,aes(x=factor(color),y=isolamento_domiciliare))+
-  geom_boxplot(outlier.color="black", fill=col_zone)+
-  labs(x = " ", y = "isolamento domiciliare")
+ggplot(df, aes(x=weekdays(df$data), y=df$nuovi_tamponi_pcr)) + 
+    geom_boxplot(outlier.color="black", fill=c("#E7F2F8","#74BDCB","#B5E5CF","#EFE7BC","#E98973","#B99095","#88B2CC")) +
+    labs(x = "giorno della settimana", y = "numero tamponi") +
+  geom_jitter(color="black", width = 0) 
 
-p5
-#p4 + plot_spacer() + p5 + plot_layout(widths = c(4, 0.5,4))
-
-#ggsave(paste0("images/boxplot_color2.png"), width = 12, height = 5, dpi = 200)
+#ggsave(paste0("images/boxplot_wekdays.png"), width = 12, height = 5, dpi = 300)
 
 ```
 
 
 ```{r variables, echo=FALSE, message=FALSE, warning = FALSE, comment = FALSE}
-#png("images/corr_scatterplot_response_variable.png", width=8.25,height=8.25,units="in",res=1200)
+#png("images/corr_scatterplot_response_variable.png", width=8.25,height=9.25,units="in",res=1200)
 par(mfrow=c(2,2))
 plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "ricoverati con sintomi", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
 plot(nuovi_positivi ~ terapia_intensiva, data = df, pch =16, xlab = "terapia intensiva", ylab = "nuovi positivi", col=col_zone[unclass(as.factor(df$color))])
-plot(nuovi_positivi ~ nuovi_decessi, data = df, pch =16, xlab = "nuovi decessi", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ isolamento_domiciliare, data = df, pch =16, xlab = "isolamento domiciliare", ylab = "isolamento domiciliare",col=col_zone[unclass(as.factor(df$color))])
 plot(nuovi_positivi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "nuovi tamponi", ylab = "nuovi positivi",col=col_zone[unclass(as.factor(df$color))])
 
 #dev.off()
-
-
 
 ```
 
@@ -260,6 +242,8 @@ We start building our model looking at the relationship between our response var
 #MODEL TRY--- chunk da sistemare 
 
 ```{r}
+library(performance)
+library(see)
 new1 <- lm(nuovi_positivi ~ nuovi_casi_testati + totale_positivi , data=df)
 new2 <- lm(nuovi_positivi ~ nuovi_casi_testati + totale_positivi + color , data=df)
 old2 <- lm(nuovi_positivi ~ nuovi_tamponi_pcr + ricoverati_con_sintomi + color, data=df)
@@ -321,7 +305,7 @@ lm_aic <- AIC(lm_mod1,lm_mod2,lm_mod3,lm_mod4, lm_mod5)
 
 
 lm_table <- data.frame(formula,lm_aic[2])
-colnames(lm_table) <- c("Model", "AIC", "MSE")
+colnames(lm_table) <- c("Model", "AIC")
 
 n<- dim(lm_table)[1]
 
@@ -738,9 +722,8 @@ summary(loess_mod1)
 d<-df
 d$data <- as.numeric(d$data)
 ggplot(data=d)+
-  geom_point(aes(x=data , y=nuovi_positivi))+
-  geom_stat(aes(x=data, y=nuovi_positivi))
-  
+  geom_point(aes(x=data , y=nuovi_positivi))
+
 loess_mod1<-loess(nuovi_positivi~ data + ricoverati_con_sintomi + nuovi_tamponi_pcr, data = d)
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
@@ -754,7 +737,7 @@ ggplot() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-```{r loess predictions, echo=FALSE, message=FALSE, warning=FALSE}
+```{r loess predictions, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 ggplot() +
   geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
