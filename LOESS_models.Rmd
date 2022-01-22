@@ -154,26 +154,41 @@ loess_mod
 ```{r}
 library(paleoMAS)
 
-loess_1 <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr, data = df, span = 0.6)
+
+
+loess_1 <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr, data = df, span = 0.1)
 
 loess_2 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color, data = df, span = 0.6)
 
 loess_3 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_workplace, data = df, span = 0.6)
 
-aic.loess(loess_1)
+?loess
+summary(loess_1)
 
 loess_2
 loess_3
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
-  geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1)) +
-  geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1)) +
-  geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
+  geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
+  geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
   labs(x = "Time", y = "New positives") +
   scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-ggsave("loess.png", width=19, height=9, dpi=800)
+ggsave("loess.png", width=12, height=5, dpi=200)
+
+
+model_spline <- spline(x = df$nuovi_decessi, y = df$nuovi_positivi)
+model_spline$x
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = model_spline$y, color = "LOESS   model 3", group = 1), size = 0.75) +
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+plot(predict(model_lin))
 
 
 ```
