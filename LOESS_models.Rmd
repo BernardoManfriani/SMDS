@@ -102,14 +102,15 @@ continuous_color <- function() {
 ```{r}
 library(raster)
 new_color_extended <- continuous_color()
+new_color <- continuous_color()
 new_color <- new_color[1:123]
-new_color
 df$new_color <- new_color
+
 df_extended$new_color <- new_color_extended
 
 df_extended$var_workplace_prev
 
-loess_mod_prev <- loess(nuovi_positivi ~ ricoverati_con_sintomi_prev + nuovi_tamponi_pcr_prev + new_color_extended + var_workplace_prev, data = df_extended, span = 0.9)
+loess_mod_prev <- loess(nuovi_positivi ~ ricoverati_con_sintomi_prev  + new_color_extended + var_workplace_prev + isolamento_domiciliare, data = df_extended, span = 0.9)
 
 fit <- predict(loess_mod_prev, type = "response")
 fit
@@ -139,7 +140,7 @@ ggplot() +
 ggplot() +
   geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1), col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
   geom_line(data = df_extended, aes(x = data, y = predict(loess_mod_prev,type="response"), color = "LOESS model predictor", group = 1)) +
-  geom_smooth(data = df_extended, aes(x = data, y = predict(loess_mod_prev,type="response"), color = "LOESS model predictor", group = 1)) +
+  #geom_smooth(data = df_extended, aes(x = data, y = predict(loess_mod_prev,type="response"), color = "LOESS model predictor", group = 1)) +
   scale_x_date(date_breaks = '5 days',
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
@@ -270,6 +271,8 @@ print(grid.table(loess_table, rows = NULL))
 #LOESS MODEL
 
 ```{r}
+loess_0_pred <- loess(nuovi_positivi ~ as.numeric(data), data = df_extended, span = 0.1)
+
 
 loess_0 <- loess(nuovi_positivi ~ as.numeric(data), data = df, span = 0.1)
 
@@ -282,11 +285,22 @@ loess_3 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi
 
 ggplot() +
   geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
-  geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
-  geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
-  geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
   geom_line(data = df, aes(x = data, y = predict(loess_0,type="response"), color = "LOESS model 0", group = 1), size = 0.75)
 
+```
+# Checking Model    
+```{r}
+library(MLmetrics)
+
+MAPE(predict(loess_0_pred)[124:137], df_extended$nuovi_positivi[124:137])
+
+predict(loess_0, newdata = df_extended)
+as.numeric(df$data)
+
+1*10*2020
 ```
 
 
