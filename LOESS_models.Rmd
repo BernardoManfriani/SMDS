@@ -302,6 +302,20 @@ as.numeric(df$data)
 
 1*10*2020
 ```
+#GLM
+
+```{r}
+glm_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + var_station + isolamento_domiciliare+ nuovi_tamponi_pcr + new_color, data = df, family = "poisson")
+
+
+ggplot() + 
+  geom_point(data = df_extended, aes(x = data , y = nuovi_positivi)) + 
+  geom_line(data = df_extended, aes(x = data, y = predict(glm_google, newdata = df_extended, type = "response")))
+
+MAPE(predict(glm_google, newdata = df_extended, type="response")[124:137],df_extended$nuovi_positivi[124:137])
+
+
+```
 
 
 
