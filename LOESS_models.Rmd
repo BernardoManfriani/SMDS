@@ -288,8 +288,13 @@ ggplot() +
   #geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
   #geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
   #geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
-  geom_line(data = df, aes(x = data, y = predict(loess_0,type="response"), color = "LOESS model 0", group = 1), size = 0.75)
+  geom_line(data = df, aes(x = data, y = predict(loess_0,type="response"), color = "LOESS model ", group = 1), size = 0.75) +
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
 
+  ggsave("loess.png", width=12, height=5, dpi=200)
 ```
 # Checking Model    
 ```{r}
@@ -305,7 +310,8 @@ as.numeric(df$data)
 #GLM
 
 ```{r}
-glm_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + var_station + isolamento_domiciliare+ nuovi_tamponi_pcr + new_color, data = df, family = "poisson")
+library(MLmetrics)
+glm_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + as.numeric(data)+ var_station + nuovi_tamponi_pcr + new_color, data = df, family = "poisson")
 
 
 ggplot() + 
@@ -319,5 +325,15 @@ MAPE(predict(glm_google, newdata = df_extended, type="response")[124:137],df_ext
 
 
 
+# Nuovi positivi
+```{r}
+  ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '1 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
 
+```
 
