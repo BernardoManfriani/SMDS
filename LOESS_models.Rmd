@@ -310,15 +310,15 @@ as.numeric(df$data)
 #GLM
 
 ```{r}
-library(MLmetrics)
-glm_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + as.numeric(data)+ var_station + nuovi_tamponi_pcr + new_color, data = df, family = "poisson")
+library(Metrics)
+glm_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + var_station + nuovi_tamponi_pcr + new_color, data = df, family = "poisson")
 
 
 ggplot() + 
   geom_point(data = df_extended, aes(x = data , y = nuovi_positivi)) + 
   geom_line(data = df_extended, aes(x = data, y = predict(glm_google, newdata = df_extended, type = "response")))
 
-MAPE(predict(glm_google, newdata = df_extended, type="response")[124:137],df_extended$nuovi_positivi[124:137])
+(1 - smape(predict(glm_google, newdata = df_extended, type="response")[124:137],df_extended$nuovi_positivi[124:137]))
 
 
 ```
@@ -328,12 +328,23 @@ MAPE(predict(glm_google, newdata = df_extended, type="response")[124:137],df_ext
 # Nuovi positivi
 ```{r}
   ggplot() +
-  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1), size = 3, col=c("#005b96","black","#b3cde0","black","black","black","black")[as.factor(weekdays(df$data))])+
   geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
-  labs(x = "Time", y = "New positives") +
-  scale_x_date(date_breaks = '1 days', date_labels = '%Y-%m-%d') +
+  labs(x = "Time", y = "Nuovi positivi") +
+  scale_x_date(date_breaks = '7 days', date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   scale_color_brewer(palette = "Dark2")
 
+  ggsave("nuoviPositiviColori.png", width=16, height=9, dpi=200)
+
+  ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_tamponi_pcr, color="nuovi tamponi", group = 1),size = 3, col=c("#005b96","black","#b3cde0","black","black","black","black")[as.factor(weekdays(df$data))])+
+  geom_line(data = df, aes(x = data, y = nuovi_tamponi_pcr, color="nuovi tamponi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  labs(x = "Time", y = "Nuovi tamponi") +
+  scale_x_date(date_breaks = '7 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave("nuoviTamponiColori.png", width=16, height=9, dpi=200)
+  
+as.factor(weekdays(df$data))[1:7]
 ```
 
