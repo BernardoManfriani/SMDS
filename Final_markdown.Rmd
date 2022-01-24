@@ -514,8 +514,8 @@ res <- residuals(nglmod5, type="deviance")
 ggplot() +
   geom_point(aes(x = log(pred), y = res), col="#2783c4") +
   geom_smooth(aes(x = log(pred), y = res), col ="#45a377") +
-  geom_line(aes(x= log(pred), y = 0), lty=2) +
-  labs(x = "Fitted values", y = "Residuals", title = "Linearity", subtitle ="Rference line should be flat and horizontal") +
+  geom_line(aes(x = log(pred), y = 0), lty=2) +
+  labs(x = "Fitted values", y = "Residuals", title = "Linearity", subtitle ="Reference line should be flat and horizontal") +
   theme_light() +
   theme(axis.title.x = element_text(size = rel(1.1)),axis.title.y = element_text(size = rel(1.1)),
         title = element_text(size = rel(1.3)))
@@ -701,7 +701,7 @@ Since the best glm model is the last one (from the AIC ), I will try to build a 
 
 ```{r gam_mod1, echo=FALSE}
 library(mgcv)
-gam_mod1 <- gam(nuovi_positivi ~  s(ricoverati_con_sintomi*color)  , data = df,family=Gamma(link=log) )
+gam_mod1 <- gam(nuovi_positivi ~  s(ricoverati_con_sintomi*color) + s(nuovi_tamponi_pcr*color)  , data = df,family=Gamma(link=log) )
 gam_mod1_pred <- predict(gam_mod1, type="response", se.fit = TRUE)
 summary(gam_mod1)
 
@@ -731,13 +731,6 @@ ggplot() +
 
 MAPE( predict(gam_mod1, type="response", newdata = df_extended[124:137,]), df_extended$nuovi_positivi[124:137])
 
-
-
-
-
-
-
-
 ```
 # SPLINE
 
@@ -759,14 +752,14 @@ ggplot(df, aes(data, nuovi_positivi, color ="Spline model") ) +
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-ggsave(paste0( "images/spline.png"), width = 12, height = 5, dpi = 150)
+#ggsave(paste0( "images/spline.png"), width = 12, height = 5, dpi = 150)
 
 ```
 
 # Predictions
 
 Linear model
-```{r new color}
+```{r lm predictions}
 
 ### lm
 
@@ -778,8 +771,9 @@ ggplot() +
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   scale_color_brewer(palette = "Dark2")
+```
 
-
+```{r glm predictions}
 ggplot() +
   geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
   geom_line(data= df_extended, aes(x= data, y = predict(glm_mod5, newdata = df_extended, type="response"), color="model 5"), size=0.75)+
@@ -790,14 +784,23 @@ ggplot() +
   scale_color_brewer(palette = "Dark2")
 
 #ggsave(paste0("images/glm_mod.png"), width = 12, height = 5, dpi = 200)
+```
 
+
+```{r accuracy evaluation}
 library("Metrics")
+#lm
 1 - smape(predict(lm_mod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.666282
 
+#glm poisson
 1 - smape(predict(glm_mod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.6654311
 
 
+#glm negative binomial
+1 - smape(predict(nglmod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.6768924
 
+#gam
+1 - smape(predict(gam_mod1,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.7321824
 
 ```
 
@@ -812,7 +815,7 @@ To handle this issue a new numerical variable (livello_di_restrizioni) has been 
 
 ggplot() +
   geom_point(data = df, aes(x = data, y = new_color, group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
-  geom_line(data = df, aes(x = data, y = new_color, group = 1), size=0.75,col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) +
+  geom_line(data = df, aes(x = data, y = new_color, group = 1), size=1.2,col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))]) +
   labs(x = "data", y = "livello di restrizioni") +
   scale_x_date(date_breaks = '5 days',
                date_labels = '%Y-%m-%d') +
@@ -849,55 +852,126 @@ ggplot() +
 
 #ggsave(paste0("images/glm_mod.png"), width = 12, height = 5, dpi = 200)
 
+
+### glm nb
+nglm_mod <- glm.nb(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color, data = df)
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data= df_extended, aes(x= data, y = predict(nglm_mod, newdata = df_extended, type="response"), color="model 5"), size=0.75)+
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
+### gam
+gam_mod <- gam(nuovi_positivi ~ s(ricoverati_con_sintomi) + s(nuovi_tamponi_pcr) + s(new_color), data = df)
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data= df_extended, aes(x= data, y = predict(gam_mod, newdata = df_extended, type="response"), color="model 5"), size=0.75)+
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
 library("Metrics")
+#lm
 1 - smape(predict(lm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.898472
 
+#glm poisson
 1 - smape(predict(glm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9445152
 
+#nglm
+1 - smape(predict(nglm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9399573
 
-
+#gam
+1 - smape(predict(gam_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9418422
 
 ```
 
-Plot models and predictions
+Plot previous models andhighlight predictions:
 ```{r}
 
+plot_predictions <- function(mod) {
+  p <- ggplot() +
+    geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=col_zone[unclass(as.factor(df_extended$color))])+ 
+    geom_line(data = df_extended, aes(x = data, y = predict(mod, newdata = df_extended, type="response"), color = "model 1", group = 1)) + labs(x = "data", y = "nuovi positivi") +
+    scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    scale_color_brewer(palette = "Dark2")
+  
+  d1<-df_extended$data[124]
+  d2<-df_extended$data[137]
+  
+  g <- ggplot(data = df_extended)+
+    geom_point( aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=col_zone[unclass(as.factor(df_extended$color))]) +
+    geom_line(data = df_extended, aes(x = data, y = predict(mod, newdata = df_extended, type="response"), color = "model 1", group = 1)) + labs(x = "data", y = "nuovi positivi") +
+    scale_color_brewer(palette = "Dark2") +
+    scale_x_date(limits = c(d1, d2)) + scale_y_continuous(limits = c(400, 1100)) + theme_bw()+
+    theme(
+      legend.position = "none",
+      panel.background = element_rect(fill = "transparent"), # bg of the panel
+      #plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+      #panel.grid.major = element_blank(), # get rid of major grid
+      #panel.grid.minor = element_blank(), # get rid of minor grid
+      legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+      legend.box.background = element_rect(fill = "transparent"), # get rid of legend panel bg,
+      axis.title.x=element_blank(),
+      axis.text.x=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.title.y=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks.y=element_blank(),
+      plot.margin = margin(t = 0,  # Top margin
+                           r = 0,  # Right margin
+                           b = 0,  # Bottom margin
+                           l = 0) # Left margin
+    )
+  
+  d3 <- df_extended$data[75]
+  d4 <- df_extended$data[118]
+  h <- p + annotation_custom(ggplotGrob(g), xmin=d3, xmax=d4, ymin=0, ymax=1000)
+  return(h)
+}
 
-p<- ggplot() +
-  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=col_zone[unclass(as.factor(df_extended$color))])+ 
-  geom_line(data = df_extended, aes(x = data, y = predict(glm_mod, newdata = df_extended, type="response"), color = "model 1", group = 1)) + labs(x = "Time", y = "New positives") +
-  scale_x_date(date_breaks = '5 days',date_labels = '%Y-%m-%d') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+res <- plot_predictions(lm_mod)
+res
+#ggsave(paste0( "images/lm_predictions.png"), width = 10, height = 8, dpi = 200)
 
-d1<-df_extended$data[124]
-d2<-df_extended$data[137]
+res <- plot_predictions(glm_mod)
+res
+#ggsave(paste0( "images/glm_predictions.png"), width = 10, height = 8, dpi = 200)
 
-g <- ggplot(data = df_extended)+
-  geom_point( aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=col_zone[unclass(as.factor(df_extended$color))])+
-  geom_line(data = df_extended, aes(x = data, y = predict(glm_mod,newdata = df_extended, type="response"), color = "model 1", group = 1)) +
-  scale_x_date(limits = c(d1, d2)) + scale_y_continuous(limits = c(400, 1000)) + theme_bw()+
-  theme(
-    legend.position = "none",
-    panel.background = element_rect(fill = "transparent"), # bg of the panel
-    #plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
-    #panel.grid.major = element_blank(), # get rid of major grid
-    #panel.grid.minor = element_blank(), # get rid of minor grid
-    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
-    legend.box.background = element_rect(fill = "transparent"), # get rid of legend panel bg,
-    axis.title.x=element_blank(),
-    axis.text.x=element_blank(),
-    axis.ticks.x=element_blank(),
-    axis.title.y=element_blank(),
-    axis.text.y=element_blank(),
-    axis.ticks.y=element_blank(),
-    plot.margin = margin(t = 0,  # Top margin
-                         r = 0,  # Right margin
-                         b = 0,  # Bottom margin
-                         l = 0) # Left margin
-  )
-p
-d3 <- df_extended$data[80]
-d4 <- df_extended$data[123]
-h <- p + annotation_custom(ggplotGrob(g), xmin=d3, xmax=d4, ymin=0, ymax=1000)
-h
 ```
+
+
+# Google data
+
+Linear models and generalized linear models using google data.
+
+```{r lm glm using google data}
+
+lm_mod_google <- lm(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_station, data = df) 
+
+glm_mod_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_station, data = df, family=poisson(link = "log"))
+
+res <- plot_predictions(lm_mod_google)
+res
+
+res <- plot_predictions(glm_mod_google)
+res
+
+#lm
+1 - smape(predict(lm_mod_google,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.8932276
+
+#glm poisson
+1 - smape(predict(glm_mod_google,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9387667
+
+
+```
+
+
+

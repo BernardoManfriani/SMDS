@@ -144,28 +144,28 @@ row.names(df_extended) <- NULL
 
 #fwrite(x=set,"google_data_sicily.csv")
 
-# set <- data.frame(read.csv("google_data_sicily.csv"))
-# 
-# set$var_station_prev <- NA
-# set$var_workplace_prev <- NA
-# set$var_retail_prev <- NA
-# for(x in (week+2):nrow(set)) {
-#   set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-week]
-#   set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-week]
-#   set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-week]
-# }
-# 
-# # remove first rows 
-# set <- set[-c(1:15),]
-# row.names(df_extended) <- NULL 
-# 
-# 
-# df_extended$var_station <- set$transit_stations_percent_change_from_baseline
-# df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
-# df_extended$var_retail <- set$workplaces_percent_change_from_baseline
-# df_extended$var_station_prev <- set$var_station_prev
-# df_extended$var_workplace_prev <- set$var_workplace_prev
-# df_extended$var_retail_prev <- set$var_retail_prev
+set <- data.frame(read.csv("google_data_sicily.csv"))
+
+set$var_station_prev <- NA
+set$var_workplace_prev <- NA
+set$var_retail_prev <- NA
+for(x in (week+2):nrow(set)) {
+  set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-week]
+  set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-week]
+  set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-week]
+}
+
+# remove first rows
+set <- set[-c(1:15),]
+row.names(df_extended) <- NULL
+
+
+df_extended$var_station <- set$transit_stations_percent_change_from_baseline
+df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
+df_extended$var_retail <- set$workplaces_percent_change_from_baseline
+df_extended$var_station_prev <- set$var_station_prev
+df_extended$var_workplace_prev <- set$var_workplace_prev
+df_extended$var_retail_prev <- set$var_retail_prev
 
 ################ Save data ################
 #### save the dataframe in a csv file  ####
@@ -173,42 +173,7 @@ fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
 
 
 
-# corr plot
-# library("ggcorrplot")
-# library("corrplot")
-# cols <- c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi_pcr", "nuovi_positivi", "variation_transit_station", "variation_retail", "variation_workplace")
-# M=cor(df_extended[,cols])
-# colnames(M) <- c("A", "B", "C", "D", "E", "F", "G", "H")
-# rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
-# corrplot(M, method="number",tl.col="#a13c28", tl.srt = 360, tl.offset = 1, tl.cex=1.1)
-# par(mfrow=c(1,1))
 
-# # Regression on google data
-# 
-# par(mfrow = c(2,1))
-# plot(nuovi_positivi ~ variation_transit_station, data = df_extended, pch =16, xlab = "variation train", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
-# plot(nuovi_positivi ~ variation_retail, data = df_extended, pch =16, xlab = "variation retail", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
-# plot(nuovi_positivi ~ variation_workplace, data = df_extended, pch =16, xlab = "variation workplace", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])
-# 
-# 
-# mod<-glm(nuovi_positivi ~ variation_workplace + variation_transit_station, data=df_extended, family=poisson)
-# summary(mod)
-# par(mfrow=c(2,2))
-# plot(mod)
-# library(ggplot2)
-# ggplot(data = df_extended)+
-#   geom_point(aes(x=data,y=nuovi_positivi))+
-#   geom_line(aes(x=data, y=predict(mod, type="response")))
-# 
-# ## Regression with google data and other covariates
-# mod<-glm(nuovi_positivi ~  variation_transit_station*(terapia_intensiva_prev + nuovi_tamponi_pcr_prev  + ricoverati_con_sintomi_prev) , data=df_extended, family=poisson)
-# summary(mod)
-# par(mfrow=c(2,2))
-# plot(mod)
-# library(ggplot2)
-# ggplot(data = df_extended)+
-#   geom_point(aes(x=data,y=nuovi_positivi))+
-#   geom_line(aes(x=data, y=predict(mod, type="response")))
 
 
 
