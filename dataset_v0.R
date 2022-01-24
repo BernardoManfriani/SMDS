@@ -38,12 +38,11 @@ continuous_color <- function() {
   new_color <- NA
   previous = ""
   current = "bianco"
-  new_color[1] = 0
   l <- df_extended$color
   count <- 0
-  for (i in 2:length(l)) {
+  for (i in 1:length(l)) {
     if(l[i] == "bianco") {
-      new_color[i] = new_color[i-1] - 0.1
+      new_color[i] = 0
       previous = "bianco"
       current = "bianco"
     }
@@ -90,7 +89,6 @@ continuous_color <- function() {
 l <- continuous_color()
 df_extended$new_color <- NA
 df_extended$new_color <- l
-
 
 
 # add columns accounting for the number of daily swabs, daily deaths,
