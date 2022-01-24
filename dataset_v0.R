@@ -168,7 +168,7 @@ row.names(df_extended) <- NULL
 # df_extended$var_retail_prev <- set$var_retail_prev
 
 ################ Save data ################
-### save the dataframe in a csv file
+#### save the dataframe in a csv file  ####
 fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
 
 
