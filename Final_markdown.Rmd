@@ -701,7 +701,7 @@ Since the best glm model is the last one (from the AIC ), I will try to build a 
 
 ```{r gam_mod1, echo=FALSE}
 library(mgcv)
-gam_mod1 <- gam(nuovi_positivi ~  s(ricoverati_con_sintomi*color) + s(nuovi_tamponi_pcr*color)  , data = df,family=Gamma(link=log) )
+gam_mod1 <- gam(nuovi_positivi ~  s(ricoverati_con_sintomi*color) + s(nuovi_tamponi_pcr*color), data = df,family=Gamma(link=log) )
 gam_mod1_pred <- predict(gam_mod1, type="response", se.fit = TRUE)
 summary(gam_mod1)
 
@@ -729,32 +729,10 @@ ggplot() +
                date_labels = '%Y-%m-%d') +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-MAPE( predict(gam_mod1, type="response", newdata = df_extended[124:137,]), df_extended$nuovi_positivi[124:137])
+MAPE(predict(gam_mod1, type="response", newdata = df_extended[124:137,]), df_extended$nuovi_positivi[124:137])
 
 ```
-# SPLINE
 
-```{r spline, echo = FALSE, message = FALSE}
-library(splines)
-knots <- quantile(df$ricoverati_con_sintomi)[2:4]
-fit.spline <- lm (nuovi_positivi ~ bs(ricoverati_con_sintomi, knots = knots), data = df)
-summary(fit.spline)
-
-
-
-ggplot(df, aes(data, nuovi_positivi, color ="Spline model") ) +
-  geom_point() +
-  geom_point(col=col_zone[unclass(as.factor(df$color))])+
-  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 10))+
-  scale_color_brewer(palette = "Dark2")+
-  labs(x = "Time", y = "New positives") +
-  scale_x_date(date_breaks = '5 days',
-               date_labels = '%Y-%m-%d') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-#ggsave(paste0( "images/spline.png"), width = 12, height = 5, dpi = 150)
-
-```
 
 # Predictions
 
@@ -790,17 +768,17 @@ ggplot() +
 ```{r accuracy evaluation}
 library("Metrics")
 #lm
-1 - smape(predict(lm_mod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.666282
+1 - smape(predict(lm_mod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) #  0.3325639
 
 #glm poisson
-1 - smape(predict(glm_mod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.6654311
+1 - smape(predict(glm_mod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) # 0.3308621
 
 
 #glm negative binomial
-1 - smape(predict(nglmod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.6768924
+1 - smape(predict(nglmod5,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) # 0.3537849
 
 #gam
-1 - smape(predict(gam_mod1,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 # 0.7321824
+1 - smape(predict(gam_mod1,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) # 0.4643648
 
 ```
 
@@ -879,16 +857,16 @@ ggplot() +
 
 library("Metrics")
 #lm
-1 - smape(predict(lm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.898472
+1 - smape(predict(lm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) #0.7969439
 
 #glm poisson
-1 - smape(predict(glm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9445152
+1 - smape(predict(glm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) #0.8890304
 
 #nglm
-1 - smape(predict(nglm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9399573
+1 - smape(predict(nglm_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) #0.8799145
 
 #gam
-1 - smape(predict(gam_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9418422
+1 - smape(predict(gam_mod,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) #0.8836843
 
 ```
 
@@ -954,24 +932,50 @@ Linear models and generalized linear models using google data.
 
 ```{r lm glm using google data}
 
-lm_mod_google <- lm(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_station, data = df) 
+lm_mod_google <- lm(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + var_station + new_color, data = df) 
 
-glm_mod_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_station, data = df, family=poisson(link = "log"))
+glm_mod_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + var_station + new_color, data = df, family=poisson(link = "log"))
 
 res <- plot_predictions(lm_mod_google)
 res
+ggsave(paste0( "images/lm_predictions_google.png"), width = 10, height = 8, dpi = 200)
+
 
 res <- plot_predictions(glm_mod_google)
 res
+ggsave(paste0( "images/glm_predictions_google.png"), width = 10, height = 8, dpi = 200)
 
 #lm
-1 - smape(predict(lm_mod_google,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.8932276
+1 - smape(predict(lm_mod_google,type="response", newdata = df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) #0.7864553
 
 #glm poisson
-1 - smape(predict(glm_mod_google,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137])/2 #0.9387667
-
+1 - smape(predict(glm_mod_google,type="response", newdata= df_extended[124:137,]), df_extended$nuovi_positivi[124:137]) 
+#0.8775334
 
 ```
 
 
+# SPLINE
+
+```{r spline, echo = FALSE, message = FALSE}
+library(splines)
+knots <- quantile(df$ricoverati_con_sintomi)[2:4]
+fit.spline <- lm (nuovi_positivi ~ bs(ricoverati_con_sintomi, knots = knots), data = df)
+summary(fit.spline)
+
+
+
+ggplot(df, aes(data, nuovi_positivi, color ="Spline model") ) +
+  geom_point() +
+  geom_point(col=col_zone[unclass(as.factor(df$color))])+
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 10))+
+  scale_color_brewer(palette = "Dark2")+
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+#ggsave(paste0( "images/spline.png"), width = 12, height = 5, dpi = 150)
+
+```
 
