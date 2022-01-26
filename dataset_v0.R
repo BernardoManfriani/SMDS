@@ -1,80 +1,181 @@
-##################
-#### Project SMSD
-##################
+#### Load dataset 
+library(data.table)
 
-library(ggplot2)
+################################## Dati covid protezione civile #######################################################
+df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
 
+#select data about Sicily and the period to be considered
+df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & 
+                                          (df_global$data >= "2020-09-16T10:00:00" & df_global$data <= "2021-02-15T10:00:00")), ]
 
-#load data 
-df_global <- data.frame(read.csv("https://raw.githubusercontent.com/pcm-dpc/
-COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"))
+# adjust number of swabs
+df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi_test_molecolare <- 
+  df_sicily_secondwave[which(df_sicily_secondwave$data < "2021-01-15"),]$tamponi
 
-#read data we are interested in
-#then those that are relative to the following coupla of parameters:
-#regione: Sicilia
-#data:  1st October 2020 to 1st February 2021 
-df_sicily_secondwave <- df_global[which(df_global$denominazione_regione == "Sicilia" & (df_global$data >= "2020-09-30T10:00:00" & df_global$data <= "2021-02-01T10:00:00")), ]
-#df_em <-df_global[which(df_global$denominazione_regione == "Emilia-Romagna" & (df_global$data >= "2021-10-01T10:00:00" & df_global$data <= "2022-01-01T10:00:00")), ]
+# remove unused columns
+df_extended <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", 
+                                                                                 "lat", "long", "note","tamponi_test_antigenico_rapido","codice_nuts_1","codice_nuts_2",
+                                                                                 "casi_da_sospetto_diagnostico", "casi_da_screening",
+                                                                                 "note_test",  "note_casi", "totale_positivi_test_molecolare", "totale_positivi_test_antigenico_rapido"))]
 
-################
-# clean dataset 
-################
+# put data in Date format
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
 
-# remove unuseful columns
-df <- df_sicily_secondwave[ , -which(names(df_sicily_secondwave) %in% c("stato", "codice_regione", "denominazione_regione", "lat", "long", "note"))]
-df <- df[ , -c(17:24)]
+# add color
+df_extended$color <-NA
+df_extended$color[which(df_extended$data >= "2020-09-16" & df_extended$data <= "2020-11-05")]<- "bianco"
+df_extended$color[which((df_extended$data >= "2020-11-06" & df_extended$data <= "2020-11-28") | 
+                          (df_extended$data >= "2020-12-28" & df_extended$data <= "2020-12-30") |
+                          (df_extended$data >= "2021-01-09" & df_extended$data <= "2021-01-16") |
+                          (df_extended$data >= "2021-02-01" & df_extended$data <= "2021-02-15"))] <- "arancione"
+df_extended$color[which((df_extended$data >= "2020-11-29" & df_extended$data <= "2020-12-23") |
+                          (df_extended$data >= "2021-01-07" & df_extended$data <= "2021-01-8"))] <- "giallo"
+df_extended$color[which((df_extended$data >= "2020-12-24" & df_extended$data <= "2020-12-27") |
+                          (df_extended$data >= "2020-12-31" & df_extended$data <= "2021-01-06") |
+                            (df_extended$data >= "2021-01-17" & df_extended$data <= "2021-01-31"))] <- "rosso"
 
-# add column accounting for the number of new swabs carried out
-for(x in 2:nrow(df)) {
-  df$nuovi_tamponi[x] <- df$tamponi[x] - df$tamponi[x-1] 
+continuous_color <- function() {
+  new_color <- NA
+  previous = ""
+  current = "bianco"
+  l <- df_extended$color
+  count <- 0
+  for (i in 1:length(l)) {
+    if(l[i] == "bianco") {
+      new_color[i] = 0
+      previous = "bianco"
+      current = "bianco"
+    }
+    else if(l[i] == "rosso") {
+      decrease = 1*0.1
+      new_color[i] = new_color[i-1] + decrease
+      if(current != "rosso") {
+        previous = current 
+        current = "rosso" 
+      }
+    }
+    else if(l[i] == "giallo") {
+      if(previous == "arancione" || previous  == "rosso"){
+        decrease = -1*0.1
+        new_color[i] = new_color[i-1] + decrease
+      }  
+      else {
+        decrease = 1*0.1
+        new_color[i] = new_color[i-1] + decrease
+      }
+      if(current != "giallo") {
+        previous = current 
+        current = "giallo" 
+      }
+    }
+    else {
+      if(previous == "rosso") {
+        decrease = -1*0.1 
+      }
+      else {
+        decrease = 1*0.1
+      }
+      new_color[i] =  new_color[i-1] + decrease
+      if(current != "arancione") {
+        previous = current 
+        current = "arancione" 
+      }
+    }
+  }
+  l <- new_color
+  return(l)
 }
-for(x in 2:nrow(df)) {
-  df$nuovi_deceduti[x] <- df$deceduti[x] - df$deceduti[x-1]
+
+l <- continuous_color()
+df_extended$new_color <- NA
+df_extended$new_color <- l
+
+
+# add columns accounting for the number of daily swabs, daily deaths,
+# people daily discharged from the hospital and the number of ICU of one week before 
+df_extended$nuovi_casi_testati <- NA
+df_extended$nuovi_tamponi_pcr <- NA
+df_extended$nuovi_decessi <- NA
+df_extended$nuovi_dimessi <- NA
+df_extended$terapia_intensiva_prev <- NA
+df_extended$ricoverati_con_sintomi_prev <- NA
+df_extended$nuovi_tamponi_pcr_prev <- NA
+df_extended$nuovi_positivi_prev <- NA
+df_extended$color_prev <- NA
+df_extended$new_color_prev <- NA
+
+
+# index reordering
+row.names(df_extended) <- NULL 
+
+for(x in 2:nrow(df_extended)) {
+  df_extended$nuovi_casi_testati[x] <- df_extended$casi_testati[x] - df_extended$casi_testati[x-1]
+  df_extended$nuovi_tamponi_pcr[x] <- df_extended$tamponi_test_molecolare[x] - df_extended$tamponi_test_molecolare[x-1] # the number of new swabs carried out] # the number of new swabs carried out
+  df_extended$nuovi_decessi[x] <- df_extended$deceduti[x] - df_extended$deceduti[x-1] # daily deaths
+  df_extended$nuovi_dimessi[x] <- df_extended$dimessi_guariti[x] - df_extended$dimessi_guariti[x-1] # variation in the number of people discharged from the hospital
+}
+week <- 7
+for(x in (week+2):nrow(df_extended)) {
+  df_extended$terapia_intensiva_prev[x] <- df_extended$terapia_intensiva[x-week]
+  df_extended$ricoverati_con_sintomi_prev[x] <- df_extended$ricoverati_con_sintomi[x-week]
+  df_extended$nuovi_tamponi_pcr_prev[x]  <- df_extended$nuovi_tamponi_pcr[x-week]
+  df_extended$color_prev[x] <- df_extended$color[x-week]
+  df_extended$new_color_prev[x] <- df_extended$new_color[x-week]
+  df_extended$nuovi_positivi_prev[x] <- df_extended$nuovi_positivi[x-week]
 }
 
-# remove first row
-df <- df[-1,]
-
-#index reordering and date format reordering
-row.names(df) <- NULL       
-df$data <- as.Date(df$data,  "%Y-%m-%d")
-
-#add color
-df$color <-NA
-df$color[1:36]<-"bianco"
-df$color[c(37:59, 89:91, 101:108)]<-rep("arancione",34)
-df$color[c(60:84,99,100)]<-rep("giallo",27)
-df$color[c(85:88,92:95,96,97,98, 109:123)]<-rep("rosso",26)
+# remove first rows 
+df_extended <- df_extended[-c(1:15),]
+row.names(df_extended) <- NULL 
 
 
-############################
-### 1.Perform some explanatory analysis for your data, especially by use of graphical tools.
-############################
+################################## Google data #######################################################
+#### Goolge data- Add data of google maps on the variation between the baseline
+#set1 <-data.frame(read.csv("Global_Mobility_Report.csv"))
+#set <- set1
+#set$date <- as.Date(set$date, "%Y-%m-%d")
+#set <- set[which(set$country_region_code == "IT"),]
+#set <- set[which(set$sub_region_1 == "Sicily"),]
+#set <-set[which(set$date >= "2020-09-16" ),]
+#set <- set[which(set$date <= "2021-02-week"),]
 
-# see how the number of positives changes over time
-ggplot() +
-  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
-  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
-  labs(x = "Time", y = "New positives") +
-  scale_x_date(date_breaks = '5 days',
-               date_labels = '%Y-%m-%d') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#set <- set[c(1:152),]
+#row.names(set) <- NULL
 
-# see how the number of swabs carried out changes over time
-ggplot() +
-  geom_line(data = df, aes(x = data, y = tamponi, group = 1)) +
-  geom_point(data = df, aes(x = data, y = tamponi, group = 1)) +
-  labs(x = "Time", y = "Swabs") +
-  scale_x_date(date_breaks = '5 days',
-               date_labels = '%Y-%m-%d') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+#fwrite(x=set,"google_data_sicily.csv")
 
-#########################
-### 2.Describe the quality of the data and discuss whether and how a plausible statistical model could be posed.
-#########################
+set <- data.frame(read.csv("google_data_sicily.csv"))
 
-# check for missing values in the data frame
-na_count <- sapply(df, function(y) sum(length(which(is.na(y)))))
-na_count <- data.frame(na_count)
-na_count
+set$var_station_prev <- NA
+set$var_workplace_prev <- NA
+set$var_retail_prev <- NA
+for(x in (week+2):nrow(set)) {
+  set$var_station_prev[x] <- set$transit_stations_percent_change_from_baseline[x-week]
+  set$var_workplace_prev[x] <-set$workplaces_percent_change_from_baseline[x-week]
+  set$var_retail_prev[x] <-set$retail_and_recreation_percent_change_from_baseline[x-week]
+}
+
+# remove first rows
+set <- set[-c(1:15),]
+row.names(df_extended) <- NULL
+
+
+df_extended$var_station <- set$transit_stations_percent_change_from_baseline
+df_extended$var_workplace <- set$retail_and_recreation_percent_change_from_baseline
+df_extended$var_retail <- set$workplaces_percent_change_from_baseline
+df_extended$var_station_prev <- set$var_station_prev
+df_extended$var_workplace_prev <- set$var_workplace_prev
+df_extended$var_retail_prev <- set$var_retail_prev
+
+################ Save data ################
+#### save the dataframe in a csv file  ####
+fwrite(x=df_extended, file="sicily_secondwave_covid.csv")
+
+
+
+
+
+
+
+
 

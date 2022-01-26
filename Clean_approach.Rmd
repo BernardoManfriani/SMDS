@@ -1,0 +1,63 @@
+---
+title: "My_View_on_SMDS"
+author: "Francesco Ortu"
+date: "1/19/2022"
+output: html_document
+---
+# Clean approach on the project
+
+
+```{r dataset, message=FALSE, echo = FALSE}
+df_extended <- data.frame(read.csv("sicily_secondwave_covid.csv"))
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
+n <- dim(df_extended)[1]
+df <- df_extended
+df <- df[-c((n-13):n),]
+
+df$data <- as.Date(df$data,  "%Y-%m-%d")
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
+
+```
+
+## Choosing covariates
+### Check correlation
+
+```{r correlation, echo=FALSE, message=FALSE, warning=FALSE}
+library("ggcorrplot")
+library("corrplot")
+cols <- c("ricoverati_con_sintomi","nuovi_decessi", "terapia_intensiva","nuovi_tamponi_pcr", "nuovi_positivi", "isolamento_domiciliare", "var_station")
+M=cor(df[,cols])
+colnames(M) <- c("A", "B", "C", "D", "E", "F", "H")
+rownames(M) <- paste0(colnames(M), ". ", gsub("_", " ", cols))
+corrplot(M, method="number",tl.col="#a13c28", tl.srt = 360, tl.offset = 1, tl.cex=1.1)
+
+
+```
+From the table the covariates we should use are `ricoverati_con_sintomi` and `nuovi_tamponi_pcr`.
+
+### See distributions of covariates
+```{r, echo=FALSE}
+par(mfrow=c(2,2))
+plot(nuovi_positivi ~ nuovi_tamponi_pcr, data = df, pch =16, xlab = "PCR test ", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ ricoverati_con_sintomi, data = df, pch =16, xlab = "Ricoverati con sintomi", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ data, data = df, pch =16, xlab = "data ", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+plot(nuovi_positivi ~ var_station, data = df, pch =16, xlab = "Var station", ylab = "New positives",col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])
+```
+This plots shows that the there are a linear dependency between $Y$ and `nuovi pcr` or `ricoverati con sintomi`. Maybe `var_station` is too noisy. 
+Should we use lm or glm.
+
+```{r glm_comparison}
+par(mfrow=c(2,2))
+mod1 <- glm(nuovi_positivi ~ nuovi_tamponi_pcr + ricoverati_con_sintomi + var_station, data=df, family=poisson() )
+summary(mod1)
+plot(mod1)
+mod2 <- glm(nuovi_positivi ~ nuovi_tamponi_pcr + ricoverati_con_sintomi , data=df, family=poisson() )
+summary(mod2)
+plot(mod2)
+mod3 <- glm(nuovi_positivi ~ ricoverati_con_sintomi, data=df, family=poisson() )
+summary(mod3)
+plot(mod3)
+anova(mod1,mod2,mod3, test="Cp")
+
+```
+

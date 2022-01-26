@@ -1,0 +1,180 @@
+---
+title: "COVID-19-sicilia-second-wave"
+author: "Francesco Ortu"
+date: "1/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data analysis
+
+```{r import data}
+setwd("/home/francesco/Repository/SMDS")
+df <- data.frame(read.csv("covid.sicilia.clean.csv"))
+df <- df[,-c(1,2)]
+
+```
+
+```{r summary}
+summary(df)
+```
+
+```{r plot, echo=FALSE}
+library(ggplot2)
+df$data <- as.Date(df$data)
+nuovi_positivi <- ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1))+ 
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# see how the number of swabs carried out changes over time
+tamponi<-ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_tamponi, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = nuovi_tamponi, group = 1,   color=color)) +
+  labs(x = "Time", y = "Swabs") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_manual(values=c("orange","white","yellow", "red"))
+
+
+# show the total number of hospitalized 
+ospedalizzati<-ggplot() +
+  geom_line(data = df, aes(x = data, y = totale_ospedalizzati, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = totale_ospedalizzati, group = 1,   color=color)) +
+  labs(x = "Time", y = "hospitalized") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_manual(values=c("orange","white","yellow", "red"))
+
+# show the total number of deaths 
+morti<-ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_deceduti, group = 1,  color=color)) +
+  geom_point(data = df, aes(x = data, y = nuovi_deceduti, group = 1,   color=color)) +
+  labs(x = "Time", y = "deaths") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_manual(values=c("orange","white","yellow", "red"))
+nuovi_positivi
+tamponi
+ospedalizzati
+morti
+```
+
+Correlation analysis:
+
+```{r correlation, echo =FALSE}
+library("ggcorrplot")
+library("corrplot")
+corr <- cor_pmat(df[, c(3,4,5,6,17)])
+M=cor(df[,c(2:6,8,10,17)])
+corrplot(M, method="number")
+
+
+acf(df$nuovi_positivi)
+```
+
+In order to find a model to predict $Y$ I may want to plot some correlation plot. Following the intuition suggested by the values of the correlation matrix (which are shown above), I mainly focused on variables `ricoverati con sintomi`, `terapia intensiva`, `totale ospedalizzati`:
+
+```{r corr between variable, echo=FALSE}
+library(ggplot2)
+
+plot1 <- ggplot(data=df) + geom_point(aes(x=nuovi_positivi, y=ricoverati_con_sintomi, color=color))+ scale_color_manual(values=c("orange","white","yellow", "red"))
+plot2 <- ggplot(data=df)+
+    geom_point(aes(x=nuovi_positivi, y=terapia_intensiva, color=color))+
+   scale_color_manual(values=c("orange","white","yellow", "red"))
+plot3 <- ggplot(data=df)+geom_point(aes(x=nuovi_positivi, y=totale_ospedalizzati, color=color))+
+        scale_color_manual(values=c("orange","white","yellow", "red"))
+plot1
+plot2
+plot3
+
+```
+
+Simply looking this plots we can notice that:
+
+-   There is a possible linear correlation between $Y$ and the other variables when the region is white. **Why??** idk, maybe it is because in that time the cases of covid (and consequentially the other variables) grew without any interference such as lockdowns or other containment measures. In my opinion this relationship may represent a bad quality of data: only in 2/3 of the dataset there are containment measures and this could be implies a non-homogeneity of the data. **THIS COULD BE ADD TO THE POINT 2: QUALITY OF DATA.**
+
+-   It seems that there are not difference between the point with other colors, apart from the orange ones; this points are quite grouped. However it may depend on the fact that the orange zone followed a yellow zone where the cases were growing, so there is not a "real" correlation between orange color and variables. *(idk what I'm really saying)*
+
+-   It will be tough to find a model for this data bc the point, except for the white ones, are quite scattered.
+
+## Find a model
+
+Since the previous observations, especially the *"quasi-linearity"* (with a lot of noise) I fristly will explore some GLM models.
+
+**Because `totale ospedalizzati == ricoverati con sintomi + terapia intensiva` this variables is not useful and I will remove it.**
+
+### **GLM, gaussian family**
+
+This is the default choice of the family.
+
+```{r gaussian GLM}
+model <- glm(df$nuovi_positivi ~ df$ricoverati_con_sintomi + df$terapia_intensiva , family = gaussian())
+summary(model)
+anova(model, test = "F")
+par(mfrow=c(2,2))
+plot(model)
+```
+
+### GLM, gamma family
+
+```{r glm gamma}
+model <- glm(df$nuovi_positivi ~ df$ricoverati_con_sintomi + df$terapia_intensiva* df$color , family = Gamma())
+summary(model)
+anova(model, test = "F")
+par(mfrow=c(2,2))
+plot(model)
+
+```
+
+### GLM conclusion
+
+-   In the plots of Residuals against Predicted values it is possible to see a clear pattern that imply a bad fit model.
+
+-   Normal Q-Q plots seems to suggest that the Gamma family is more appropriate for our data.
+
+-   Both the GLM/ANOVA output suggest that `ricoverati con sintomi` is more important and accurate than `terapia intensiva`.
+
+-   
+
+### GAM
+
+```{r gam}
+library(mgcv)
+gam1 <- gam(nuovi_positivi ~ terapia_intensiva + color + nuovi_tamponi, data = df, family="poisson")
+gam2 <- gam(nuovi_positivi ~ terapia_intensiva * color + nuovi_tamponi * color + , data = df, family="poisson")
+summary(gam1)
+summary(gam2)
+
+
+
+
+ p<- ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+geom_line(data = df, aes(x = data, y = predict(gam1,type="response"), color = "gam 1", group = 1)) +
+     labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ pp<- ggplot() +
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1)) +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+geom_line(data = df, aes(x = data, y = predict(gam2,type="response"), color = "gam 2", group = 1)) +
+     labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+ p
+ pp
+```

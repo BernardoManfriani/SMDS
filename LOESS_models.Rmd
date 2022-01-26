@@ -1,0 +1,350 @@
+---
+title: "LOESS models"
+output:
+  html_document:
+    df_print: paged
+---
+
+Load dataset.
+
+Read data we are interested in, then those that are relative to the following couple of parameters:
+  
+-   regione: Sicilia
+
+-   data: 1st October 2020 to 1st February 2021
+
+```{r dataset, message=FALSE, echo = FALSE}
+df_extended <- data.frame(read.csv("sicily_secondwave_covid.csv"))
+df_extended$data <- as.Date(df_extended$data,  "%Y-%m-%d")
+
+df <- df_extended[which(df_extended$data >= "2020-10-01" & df_extended$data <= "2021-01-31"),]
+df$data <- as.Date(df$data,  "%Y-%m-%d")
+
+col_zone <- c("#fc6b03","#cfcaca","#f2d729","#b3190b")
+df
+
+```
+
+## LOESS
+
+```{r}
+library(ggplot2)
+
+for(x in 1:123){
+  if (df$color[x] == "bianco") {
+    df$colorAsNum[x] = 10
+  }
+  if (df$color[x] == "giallo") {
+    df$colorAsNum[x] = 20
+  }
+  if (df$color[x] == "arancione") {
+    df$colorAsNum[x] = 30
+  }
+  if (df$color[x] == "rosso") {
+    df$colorAsNum[x] = 40
+  }
+}
+continuous_color <- function() {
+  new_color <- NA
+  previous = ""
+  current = "bianco"
+  
+  l <- df_extended$color
+  count <- 0
+  for (i in 1:length(l)) {
+    if(l[i] == "bianco") {
+      new_color[i] = 0
+      previous = "bianco"
+      current = "bianco"
+    }
+    else if(l[i] == "rosso") {
+      decrease = 1*0.5
+      new_color[i] = new_color[i-1] + decrease
+      if(current != "rosso") {
+        previous = current 
+        current = "rosso" 
+      }
+    }
+    else if(l[i] == "giallo") {
+      if(previous == "arancione" || previous  == "rosso"){
+        decrease = -1*0.5
+        new_color[i] = new_color[i-1] + decrease
+      }  
+      else {
+        decrease = 1*0.5
+        new_color[i] = new_color[i-1] + decrease
+      }
+      if(current != "giallo") {
+        previous = current 
+        current = "giallo" 
+      }
+    }
+    else {
+      if(previous == "rosso") {
+        decrease = -1*0.5 
+      }
+      else {
+        decrease = 1*0.5
+      }
+      new_color[i] =  new_color[i-1] + decrease
+      if(current != "arancione") {
+        previous = current 
+        current = "arancione" 
+      }
+    }
+  }
+  l <- new_color
+  return(l)
+}
+```
+
+
+```{r}
+library(raster)
+new_color_extended <- continuous_color()
+new_color <- continuous_color()
+new_color <- new_color[1:123]
+df$new_color <- new_color
+
+df_extended$new_color <- new_color_extended
+
+df_extended$var_workplace_prev
+
+loess_mod_prev <- loess(nuovi_positivi ~ ricoverati_con_sintomi_prev  + new_color_extended + var_workplace_prev + isolamento_domiciliare, data = df_extended, span = 0.9)
+
+fit <- predict(loess_mod_prev, type = "response")
+fit
+loess_mod_prev$fitted
+
+plot(approx(x = df_extended$data, y = loess_mod_prev$fitted))
+lines(approx(x = df_extended$data, y = loess_mod_prev$fitted))
+
+loess_mod_prev
+
+loess_mod <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr, data = df, span = 0.6)
+
+loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color, data = df, span = 0.6)
+loess_modAll <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + isolamento_domiciliare + colorAsNum, data = df, span = 0.6)
+
+summary(loess_modAll)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(loess_mod,type="response"), color = "LOESS model with no color", group = 1)) +
+  geom_line(data = df, aes(x = data, y = predict(loess_modAdd,type="response"), color = "LOESS model adding color", group = 1)) +
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1), col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(loess_mod_prev,type="response"), color = "LOESS model predictor", group = 1)) +
+  #geom_smooth(data = df_extended, aes(x = data, y = predict(loess_mod_prev,type="response"), color = "LOESS model predictor", group = 1)) +
+  scale_x_date(date_breaks = '5 days',
+               date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+loess_mod_prev
+ggsave("loess.png", width=19, height=9, dpi=800)
+loess_modAdd
+loess_mod
+```
+
+
+```{r}
+#library(paleoMAS)
+
+
+loess_1 <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr, data = df, span = 0.1)
+
+loess_1_pred <- loess(nuovi_positivi ~  as.numeric(data) + nuovi_tamponi_pcr, data = df, span = 0.1)
+
+loess_1 <- loess(nuovi_positivi ~  as.numeric(data), data = df, span = 0.1)
+
+
+loess_2 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color, data = df, span = 0.6)
+
+loess_3 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_workplace, data = df, span = 0.6)
+
+?loess
+summary(loess_1)
+
+loess_2
+loess_3
+library(RColorBrewer)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
+  geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
+  geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) 
+
+library(performance)
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(loess_1, newdata = df_extended, type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
+
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
+ggsave("loess.png", width=12, height=5, dpi=200)
+
+ggplot() +
+  geom_point(data = df, aes(x = ricoverati_con_sintomi, y = nuovi_positivi, color="nuovi   positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  geom_line(data = df, aes(x = ricoverati_con_sintomi, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
+  labs(x = "ricoverati_con_sintomi", y = "New positives") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
+ggsave("ricoveratiSintomi.png", width=12, height=5, dpi=200)
+
+
+ggplot() +
+  geom_point(data = df, aes(x = nuovi_tamponi_pcr, y = nuovi_positivi, color="nuovi   positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  geom_line(data = df, aes(x = nuovi_tamponi_pcr, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
+  labs(x = "nuovi_tamponi", y = "New positives") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_color_brewer(palette = "Dark2")
+
+
+ggsave("nuoviTamponi.png", width=12, height=5, dpi=200)+
+  
+
+ggsave("nuoviTamponi.png", width=12, height=5, dpi=200)
+  
+predict(loess_1, newdata = df_extended, type="response")
+```
+
+
+
+## Loess with prev
+```{r}
+loess_1 <- loess(nuovi_positivi ~  as.numeric(data) + nuovi_tamponi_pcr, data = df_extended, span = 0.1)
+
+ggplot() +
+  geom_point(data = df_extended, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df_extended$color))])+ 
+  geom_line(data = df_extended, aes(x = data, y = predict(loess_1, newdata = df_extended, type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
+```
+
+
+
+```{r}
+formula <- paste0("nuovi_positivi ~ ", c("ricoverati_con_sintomi + nuovi_tamponi_pcr","ricoverati_con_sintomi + nuovi_tamponi_pcr + color"))
+formula
+
+RSE <- paste0(c("248.4", "194.4"))
+RSE
+Parameter <- paste0(c("12.08","18.21"))
+Parameter
+loess_table <- data.frame(formula,RSE,Parameter)
+colnames(loess_table) <- c("LOESS Model", "RSE", "Parameter")
+loess_table
+
+library(gtable)
+library(gridExtra)
+library(grid)
+
+tt3 <- ttheme_minimal(
+  core=list(bg_params = list(fill = blues9[1:2], col=NA), padding=unit.c(unit(15, "mm"), unit(10, "mm")),fg_params=list(hjust=0, x=c(rep(0.02,n), rep(0.2,n)))),
+  colhead=list(bg_params=list(fill="#cee4f5"),fg_params=list(col="#0c1b4a",fontsize=14, fontface="bold",hjust=0, x=c(0.02,0.3)),padding=unit.c(unit(4, "mm"), unit(10, "mm"))),
+  rowhead=list(fg_params=list(col="orange", fontface=3L, hjust=0, x=0)))
+
+grid.newpage()
+table(loess_table)
+print(grid.table(loess_table, rows = NULL))
+```
+
+
+
+
+#LOESS MODEL
+
+```{r}
+loess_0_pred <- loess(nuovi_positivi ~ as.numeric(data), data = df_extended, span = 0.1)
+
+
+loess_0 <- loess(nuovi_positivi ~ as.numeric(data), data = df, span = 0.1)
+
+loess_1 <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr, data = df, span = 0.1)
+
+
+loess_2 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color, data = df, span = 0.6)
+
+loess_3 <- loess_modAdd <- loess(nuovi_positivi ~ ricoverati_con_sintomi + nuovi_tamponi_pcr + new_color + var_workplace, data = df, span = 0.6)
+
+ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+ 
+  #geom_line(data = df, aes(x = data, y = predict(loess_1,type="response"), color = "LOESS model 1", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_2,type="response"), color = "LOESS model 2", group = 1), size = 0.75) +
+  #geom_line(data = df, aes(x = data, y = predict(loess_3,type="response"), color = "LOESS model 3", group = 1), size = 0.75) +
+  geom_line(data = df, aes(x = data, y = predict(loess_0,type="response"), color = "LOESS model ", group = 1), size = 0.75) +
+  labs(x = "Time", y = "New positives") +
+  scale_x_date(date_breaks = '5 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
+  ggsave("loess.png", width=12, height=5, dpi=200)
+```
+# Checking Model    
+```{r}
+library(MLmetrics)
+
+MAPE(predict(loess_0_pred)[124:137], df_extended$nuovi_positivi[124:137])
+
+predict(loess_0, newdata = df_extended)
+as.numeric(df$data)
+
+1*10*2020
+```
+#GLM
+
+```{r}
+library(Metrics)
+glm_google <- glm(nuovi_positivi ~ ricoverati_con_sintomi + var_station + nuovi_tamponi_pcr + new_color, data = df, family = "poisson")
+
+
+ggplot() + 
+  geom_point(data = df_extended, aes(x = data , y = nuovi_positivi)) + 
+  geom_line(data = df_extended, aes(x = data, y = predict(glm_google, newdata = df_extended, type = "response")))
+
+(1 - smape(predict(glm_google, newdata = df_extended, type="response")[124:137],df_extended$nuovi_positivi[124:137]))
+
+
+```
+
+
+
+# Nuovi positivi
+```{r}
+  ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1), size = 3, col=c("#005b96","black","#b3cde0","black","black","black","black")[as.factor(weekdays(df$data))])+
+  geom_line(data = df, aes(x = data, y = nuovi_positivi, color="nuovi positivi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  labs(x = "Time", y = "Nuovi positivi") +
+  scale_x_date(date_breaks = '7 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  scale_color_brewer(palette = "Dark2")
+
+  ggsave("nuoviPositiviColori.png", width=16, height=9, dpi=200)
+
+  ggplot() +
+  geom_point(data = df, aes(x = data, y = nuovi_tamponi_pcr, color="nuovi tamponi", group = 1),size = 3, col=c("#005b96","black","#b3cde0","black","black","black","black")[as.factor(weekdays(df$data))])+
+  geom_line(data = df, aes(x = data, y = nuovi_tamponi_pcr, color="nuovi tamponi", group = 1),col=c("#fc6b03","#cfcaca","#f2d729","#b3190b")[unclass(as.factor(df$color))])+
+  labs(x = "Time", y = "Nuovi tamponi") +
+  scale_x_date(date_breaks = '7 days', date_labels = '%Y-%m-%d') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave("nuoviTamponiColori.png", width=16, height=9, dpi=200)
+  
+as.factor(weekdays(df$data))[1:7]
+```
+
